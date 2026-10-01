@@ -65,7 +65,8 @@ def tabla_jugadores(data, ids):
     alineaciones = alineaciones[alineaciones["id_partido"].isin(ids)]
     goles = pd.DataFrame(data["goles"])
     goles_gf = goles[goles["id_partido"].isin(ids) & (goles["tipo_gol"] == "GF")]
-    total_goles_equipo = len(goles_gf)
+    # "G+A del equipo": cada gol GF suma 1 + 1 más si tiene asistidor cargado.
+    total_ga_equipo = len(goles_gf) + int(goles_gf["id_asistidor"].notna().sum())
 
     filas = []
     for jugador in data["jugadores"]:
@@ -86,10 +87,8 @@ def tabla_jugadores(data, ids):
             "pj": pj, "g": g, "a": a, "ga": ga,
             "ta": int(propias["amarillas"].sum()),
             "tr": int(propias["rojas"].sum()),
-            "gPorPj": (g / pj) if pj else None,
-            "gaPorPj": (ga / pj) if pj else None,
-            "pctGolesEquipo": (g / total_goles_equipo) if total_goles_equipo else None,
             "primerGolEquipo": primer_gol,
-            "minPorGol": (pj * MINUTOS_PARTIDO / g) if g else None,
+            "pctGaEquipo": (ga / total_ga_equipo) if total_ga_equipo else None,
+            "minPorGa": (pj * MINUTOS_PARTIDO / ga) if ga else None,
         })
     return filas

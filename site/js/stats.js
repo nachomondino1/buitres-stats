@@ -114,7 +114,9 @@ export function resumenPorTipo(data, filtros = {}) {
 export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
   const alineaciones = data.alineaciones.filter((a) => idsPartidos.has(a.id_partido));
   const golesGF = data.goles.filter((g) => idsPartidos.has(g.id_partido) && g.tipo_gol === "GF");
-  const totalGolesEquipo = golesGF.length;
+  // "G+A del equipo": cada gol GF suma 1 (es un gol de alguien) + 1 más si
+  // además tiene asistidor cargado (es la asistencia de otro alguien).
+  const totalGaEquipo = golesGF.length + golesGF.filter((g) => g.id_asistidor).length;
 
   // Map ≈ dict; acumuladorPorJugador.get(id) ?? inicial ≈ dict.setdefault(id, inicial)
   const acumuladorPorJugador = new Map();
@@ -161,11 +163,9 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
       ga,
       ta: a.ta,
       tr: a.tr,
-      gPorPj: dividirONull(a.g, a.pj),
-      gaPorPj: dividirONull(ga, a.pj),
-      pctGolesEquipo: dividirONull(a.g, totalGolesEquipo),
       primerGolEquipo: a.primerGol,
-      minPorGol: dividirONull(a.pj * MINUTOS_PARTIDO, a.g),
+      pctGaEquipo: dividirONull(ga, totalGaEquipo),
+      minPorGa: dividirONull(a.pj * MINUTOS_PARTIDO, ga),
     });
   }
   return filas;

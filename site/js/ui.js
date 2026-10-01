@@ -44,7 +44,9 @@ const estado = {
   jugadorFichaId: null,
 };
 
-const VISTAS = ["resumen", "jugadores", "partidos", "ficha", "graficos", "duos"];
+// agrupadas: equipo primero (resumen, partidos, gráficos trae varios charts
+// de equipo), después todo lo centrado en jugadores.
+const VISTAS = ["resumen", "partidos", "graficos", "jugadores", "ficha", "duos"];
 
 async function init() {
   const main = document.querySelector("main");
@@ -70,12 +72,9 @@ function leerFiltrosDeURL() {
   const params = new URLSearchParams(window.location.search);
   const filtros = {};
   if (params.has("tipo")) filtros.tipo = params.get("tipo");
-  if (params.has("desde")) filtros.desde = params.get("desde");
-  if (params.has("hasta")) filtros.hasta = params.get("hasta");
   if (params.has("rivales")) filtros.rivales = new Set(params.get("rivales").split(","));
   if (params.has("resultados")) filtros.resultados = new Set(params.get("resultados").split(","));
   if (params.has("ultimos")) filtros.ultimos = Number(params.get("ultimos"));
-  if (params.has("jugador")) filtros.jugadorTexto = params.get("jugador");
   estado.filtros = filtros;
   if (params.has("vista") && VISTAS.includes(params.get("vista"))) estado.vista = params.get("vista");
   if (params.has("jugadorId")) estado.jugadorFichaId = params.get("jugadorId");
@@ -85,12 +84,9 @@ function actualizarURL() {
   const params = new URLSearchParams();
   const f = estado.filtros;
   if (f.tipo && f.tipo !== "Todos") params.set("tipo", f.tipo);
-  if (f.desde) params.set("desde", f.desde);
-  if (f.hasta) params.set("hasta", f.hasta);
   if (f.rivales && f.rivales.size) params.set("rivales", [...f.rivales].join(","));
   if (f.resultados && f.resultados.size) params.set("resultados", [...f.resultados].join(","));
   if (f.ultimos != null) params.set("ultimos", String(f.ultimos));
-  if (f.jugadorTexto) params.set("jugador", f.jugadorTexto);
   if (estado.vista !== "resumen") params.set("vista", estado.vista);
   if (estado.jugadorFichaId) params.set("jugadorId", estado.jugadorFichaId);
   const query = params.toString();
@@ -119,14 +115,6 @@ function construirControlesFiltro() {
       </select>
     </div>
     <div class="filtro-campo">
-      <label for="f-desde">Desde</label>
-      <input type="date" id="f-desde" />
-    </div>
-    <div class="filtro-campo">
-      <label for="f-hasta">Hasta</label>
-      <input type="date" id="f-hasta" />
-    </div>
-    <div class="filtro-campo">
       <details class="filtro-dropdown">
         <summary>Rival<span class="filtro-dropdown-badge" id="f-rivales-badge" hidden></span></summary>
         <div class="filtro-dropdown-panel">
@@ -153,10 +141,6 @@ function construirControlesFiltro() {
         <input type="number" min="1" id="f-ultimos-custom" aria-label="Otra cantidad de últimos partidos" />
       </div>
     </div>
-    <div class="filtro-campo">
-      <label for="f-jugador">Buscar jugador</label>
-      <input type="text" id="f-jugador" class="input-busqueda" placeholder="Nombre…" />
-    </div>
     <button type="button" class="boton-limpiar">Limpiar filtros</button>
   `;
 
@@ -167,9 +151,6 @@ function construirControlesFiltro() {
 
   // reflejar el estado actual de filtros en los controles recién creados
   cont.querySelector("#f-tipo").value = filtros.tipo ?? "";
-  cont.querySelector("#f-desde").value = filtros.desde ?? "";
-  cont.querySelector("#f-hasta").value = filtros.hasta ?? "";
-  cont.querySelector("#f-jugador").value = filtros.jugadorTexto ?? "";
   for (const cb of cont.querySelectorAll('input[name="rival"]')) {
     cb.checked = filtros.rivales?.has(cb.value) ?? false;
   }
@@ -184,18 +165,6 @@ function construirControlesFiltro() {
 
   cont.querySelector("#f-tipo").addEventListener("change", (e) => {
     estado.filtros.tipo = e.target.value || undefined;
-    onFiltrosCambiaron();
-  });
-  cont.querySelector("#f-desde").addEventListener("change", (e) => {
-    estado.filtros.desde = e.target.value || undefined;
-    onFiltrosCambiaron();
-  });
-  cont.querySelector("#f-hasta").addEventListener("change", (e) => {
-    estado.filtros.hasta = e.target.value || undefined;
-    onFiltrosCambiaron();
-  });
-  cont.querySelector("#f-jugador").addEventListener("input", (e) => {
-    estado.filtros.jugadorTexto = e.target.value || undefined;
     onFiltrosCambiaron();
   });
   for (const cb of cont.querySelectorAll('input[name="rival"]')) {
@@ -362,15 +331,13 @@ const COLUMNAS_JUGADORES = [
   { clave: "ga", etiqueta: "G+A" },
   { clave: "ta", etiqueta: "TA" },
   { clave: "tr", etiqueta: "TR" },
-  { clave: "gPorPj", etiqueta: "G/PJ", formato: fmt },
-  { clave: "gaPorPj", etiqueta: "(G+A)/PJ", formato: fmt },
-  { clave: "pctGolesEquipo", etiqueta: "% goles equipo", formato: fmtPorcentaje },
   { clave: "primerGolEquipo", etiqueta: "1º gol equipo" },
-  { clave: "minPorGol", etiqueta: "Min/gol", formato: fmt },
+  { clave: "pctGaEquipo", etiqueta: "% G+A equipo", formato: fmtPorcentaje },
+  { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt },
 ];
 
 function renderJugadores(cont, ids) {
-  let filas = tablaJugadores(estado.data, ids, estado.filtros.jugadorTexto ?? "");
+  let filas = tablaJugadores(estado.data, ids);
   const orden = estado.orden.jugadores;
   filas = ordenarFilas(filas, orden);
 
@@ -389,9 +356,8 @@ function renderJugadores(cont, ids) {
               <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${f.nombre_mostrar}</button></td>
               <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
               <td>${f.ta}</td><td>${f.tr}</td>
-              <td>${fmt(f.gPorPj)}</td><td>${fmt(f.gaPorPj)}</td>
-              <td>${fmtPorcentaje(f.pctGolesEquipo)}</td>
-              <td>${f.primerGolEquipo}</td><td>${fmt(f.minPorGol)}</td>
+              <td>${f.primerGolEquipo}</td>
+              <td>${fmtPorcentaje(f.pctGaEquipo)}</td><td>${fmt(f.minPorGa)}</td>
             </tr>
           `).join("")}
         </tbody>

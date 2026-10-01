@@ -2,6 +2,27 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Tabla de jugadores (pedido de la usuaria): columnas y "% G+A equipo"
+
+Se sacaron G/PJ, (G+A)/PJ, "% goles equipo" y "Min/gol" (ya renombrado una vez, ver
+más abajo), y se agregaron "% G+A equipo" y "Min/G+A". Quedan: PJ, G, A, G+A, TA, TR,
+1º gol equipo, % G+A equipo, Min/G+A.
+
+**"G+A del equipo"** (el denominador de "% G+A equipo") no es solo la cantidad de
+goles GF del set — es goles GF **+** la cantidad de esos goles que además tienen
+asistidor cargado (cada gol de penal/individual sin asistidor suma 1, un gol asistido
+suma 2: uno para el goleador, uno para el asistidor). Es la misma idea que ya usaba
+"% goles del equipo" pero extendida a incluir asistencias, para que la suma de
+"% G+A equipo" de todos los jugadores dé ~100% en vez de superar el 100% (que pasaría
+si el denominador fuera solo goles, porque cada asistencia sumaría sin un "lugar"
+correspondiente en el total).
+
+Se sacaron también los filtros "Desde"/"Hasta" y "Buscar jugador" de la UI (no se
+usaban) y se reordenaron las pestañas agrupando equipo (Resumen, Partidos, Gráficos)
+antes que jugadores (Jugadores, Ficha de jugador, Dúos). `stats.js` sigue soportando
+`desde`/`hasta` y la búsqueda por texto en `tablaJugadores()` como parámetros — es
+lógica genérica y testeada, no hace daño dejarla aunque hoy ningún control la use.
+
 ## Limpieza de repo (pedido de la usuaria)
 
 - `.DS_Store` estaba trackeado en git desde el primer commit (antes de este trabajo).

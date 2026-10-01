@@ -137,8 +137,8 @@ test("tablaJugadores: PJ/G/A/TA/TR y derivados", () => {
   assert.equal(ana.a, 1); // asistió el gol de Carla en el partido 3
   assert.equal(ana.ga, 2);
   assert.equal(ana.tr, 1);
-  assert.equal(ana.gPorPj, 1 / 3);
-  assert.equal(ana.pctGolesEquipo, 1 / 6); // 6 goles GF en total en el dataset
+  assert.equal(ana.pctGaEquipo, 2 / 10); // 10 = 6 goles GF + 4 de esos goles con asistidor cargado
+  assert.equal(ana.minPorGa, (3 * MINUTOS_PARTIDO) / 2);
 });
 
 test("tablaJugadores no incluye jugadores sin ninguna alineación en el set", () => {
@@ -148,10 +148,13 @@ test("tablaJugadores no incluye jugadores sin ninguna alineación en el set", ()
 });
 
 test("tablaJugadores: división por cero da null, nunca NaN/Infinity", () => {
-  const filas = tablaJugadores(DATA, new Set([2])); // Ana jugó, no metió goles ni asistió
+  // Ana jugó el partido 2, pero ahí no hubo ningún gol: ni ella ni el equipo
+  // tienen G+A, así que ambos cocientes caen en denominador 0.
+  const filas = tablaJugadores(DATA, new Set([2]));
   const ana = filas[0];
-  assert.equal(ana.gPorPj, 0); // 0 goles / 1 pj = 0, no es división por cero
-  assert.equal(ana.minPorGol, null); // 0 goles en el denominador de minutos/gol: null
+  assert.equal(ana.ga, 0);
+  assert.equal(ana.pctGaEquipo, null);
+  assert.equal(ana.minPorGa, null);
 });
 
 test("tablaJugadores: búsqueda de texto por nombre (case-insensitive)", () => {
@@ -159,12 +162,13 @@ test("tablaJugadores: búsqueda de texto por nombre (case-insensitive)", () => {
   assert.deepEqual(filas.map((f) => f.nombre_mostrar), ["Ana"]);
 });
 
-test("minPorGol usa MINUTOS_PARTIDO", () => {
+test("minPorGa usa MINUTOS_PARTIDO", () => {
   const filas = tablaJugadores(DATA, TODOS);
-  const bruno = filas.find((f) => f.id_jugador === "J02"); // partidos 1 y 4: pj=2, g=3 (p1 nro2, p4 nro1 y nro2)
+  // partidos 1 y 4: pj=2, g=3 (p1 nro2, p4 nro1 y nro2), a=1 (asistió a Ana en p1 nro1) -> ga=4
+  const bruno = filas.find((f) => f.id_jugador === "J02");
   assert.equal(bruno.pj, 2);
-  assert.equal(bruno.g, 3);
-  assert.equal(bruno.minPorGol, (2 * MINUTOS_PARTIDO) / 3);
+  assert.equal(bruno.ga, 4);
+  assert.equal(bruno.minPorGa, (2 * MINUTOS_PARTIDO) / 4);
 });
 
 // ---------------- partidosConDetalle / fichaJugador ----------------
