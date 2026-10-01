@@ -26,7 +26,10 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt
-      - run: pytest
+      # python -m pytest (no "pytest" a secas): así es como se corre en local
+      # (ver README) y así sys.path incluye la raíz del repo, donde viven
+      # export_data.py y schema.py (si no, ModuleNotFoundError en CI).
+      - run: python -m pytest
 
       - uses: actions/setup-node@v4
         with:

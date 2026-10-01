@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# export_data.py y schema.py viven en la raíz del repo, no en un paquete
+# instalado: sin esto, "pytest" a secas (a diferencia de "python -m pytest")
+# no los encuentra. Ver .github/workflows/deploy.yml y DECISIONS.md.
+pythonpath = ["."]

@@ -2,6 +2,20 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## CI/CD
+
+### `pytest` a secas no encontraba `export_data`/`schema` en GitHub Actions
+
+Local siempre corrí `python -m pytest` (agrega la raíz del repo a `sys.path` porque
+`-m` prepende el cwd). El workflow tenía `run: pytest`, que **no** hace eso, y
+`export_data.py`/`schema.py` viven sueltos en la raíz (no son un paquete instalado) —
+el primer deploy real falló en el job `test` con `ModuleNotFoundError`. Se agregó
+`pyproject.toml` con `[tool.pytest.ini_options] pythonpath = ["."]` (la forma estándar
+de pytest para esto) para que ande sin importar cómo se invoque, y de paso el workflow
+quedó con `python -m pytest` explícito. Se encontró recién corriendo el deploy de
+verdad por primera vez — los tests locales nunca lo iban a agarrar porque siempre se
+corrieron con `-m`.
+
 ## Fase 2b — backend gsheets
 
 ### `validar()` asumía que `fecha` siempre era un `pd.Timestamp`
