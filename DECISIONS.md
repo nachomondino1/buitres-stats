@@ -2,6 +2,15 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Foto del plantel: probada y revertida (feedback visual de la usuaria)
+
+Se agregó una foto grupal arriba del header (ver commit revertido), optimizada y sin
+pegarle al Lighthouse (quedó en 92/100/100/100). La usuaria la vio publicada y pidió
+sacarla ("queda muy mal") — revertido sin discutir el motivo técnico, es una decisión
+de diseño/gusto, no de performance. Queda en el backlog como "fotos del plantel /
+jugadores" por si se retoma con otro tratamiento (por ejemplo más chica, en la ficha
+de jugador en vez de como banner de ancho completo).
+
 ## Lighthouse real (segundo ítem del backlog): Performance 85→100
 
 La spec original pedía "Lighthouse mobile ≥ 90 en Performance y Accessibility" como
