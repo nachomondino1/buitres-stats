@@ -292,15 +292,10 @@ function renderResumen(cont, ids) {
     cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
     return;
   }
-  const tarjetas = [
-    ["PJ", r.pj, ""], ["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"],
-    ["GF", r.gf, ""], ["GC", r.gc, ""], ["Dif", r.dif, ""],
-    ["% victorias", fmtPorcentaje(r.pctVictorias), ""],
-  ];
   cont.innerHTML = `
-    <div class="resumen-grid">
-      ${tarjetas.map(([et, val, clase]) => miniTarjeta(et, val, clase, "resumen-tarjeta")).join("")}
-    </div>
+    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-tarjeta")}
+    ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]], "resumen-tarjeta")}
+    ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]], "resumen-tarjeta")}
     <p>Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
     <h2>Por tipo de partido</h2>
     <p class="estado-vacio" style="padding:0.25rem 0;text-align:left">Este bloque ignora el filtro de Tipo.</p>
@@ -311,23 +306,25 @@ function renderResumen(cont, ids) {
     .map(([tipo, r2]) => `
       <div class="tarjeta-tipo">
         <strong>${tipo}</strong>
-        <div class="mini-grid">
-          ${miniTarjeta("PJ", r2.pj)}
-          ${miniTarjeta("G", r2.g, "tarjeta-g")}
-          ${miniTarjeta("E", r2.e, "tarjeta-e")}
-          ${miniTarjeta("P", r2.p, "tarjeta-p")}
-          ${miniTarjeta("GF", r2.gf)}
-          ${miniTarjeta("GC", r2.gc)}
-          ${miniTarjeta("% vict.", fmtPorcentaje(r2.pctVictorias))}
-        </div>
+        ${filaTarjetas([["PJ", r2.pj], ["% vict.", fmtPorcentaje(r2.pctVictorias)]])}
+        ${filaTarjetas([["G", r2.g, "tarjeta-g"], ["E", r2.e, "tarjeta-e"], ["P", r2.p, "tarjeta-p"]])}
+        ${filaTarjetas([["GF", r2.gf], ["GC", r2.gc]])}
       </div>
     `)
     .join("");
 }
 
-// tarjeta chica reusable: la grilla grande de arriba y las mini-grillas de
-// "por tipo de partido" comparten el mismo marcado, solo cambia el tamaño (CSS).
-function miniTarjeta(etiqueta, valor, clase = "", claseBase = "mini-tarjeta") {
+// una fila = un grupo semántico (resultado, goles, etc.) en su propia grilla,
+// para separarlos visualmente en vez de una sola grilla con las 8 tarjetas
+// mezcladas. La grilla grande de arriba y las mini-grillas de "por tipo de
+// partido" comparten el mismo marcado, solo cambia el tamaño (CSS, claseBase).
+function filaTarjetas(items, claseBase = "mini-tarjeta") {
+  const grilla = claseBase === "resumen-tarjeta" ? "resumen-grid" : "mini-grid";
+  const tarjetas = items.map(([et, val, clase = ""]) => miniTarjeta(et, val, clase, claseBase)).join("");
+  return `<div class="${grilla}">${tarjetas}</div>`;
+}
+
+function miniTarjeta(etiqueta, valor, clase, claseBase) {
   return `<div class="${claseBase} ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
 }
 
