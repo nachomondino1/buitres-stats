@@ -137,6 +137,7 @@ test("tablaJugadores: PJ/G/A/TA/TR y derivados", () => {
   assert.equal(ana.a, 1); // asistió el gol de Carla en el partido 3
   assert.equal(ana.ga, 2);
   assert.equal(ana.tr, 1);
+  assert.equal(ana.partidosConGa, 2); // metió en p1 (gol) y p3 (asistencia)
   assert.equal(ana.pctGaEquipo, 2 / 10); // 10 = 6 goles GF + 4 de esos goles con asistidor cargado
   assert.equal(ana.minPorGa, (3 * MINUTOS_PARTIDO) / 2);
 });
@@ -153,6 +154,7 @@ test("tablaJugadores: división por cero da null, nunca NaN/Infinity", () => {
   const filas = tablaJugadores(DATA, new Set([2]));
   const ana = filas[0];
   assert.equal(ana.ga, 0);
+  assert.equal(ana.partidosConGa, 0);
   assert.equal(ana.pctGaEquipo, null);
   assert.equal(ana.minPorGa, null);
 });
@@ -168,6 +170,7 @@ test("minPorGa usa MINUTOS_PARTIDO", () => {
   const bruno = filas.find((f) => f.id_jugador === "J02");
   assert.equal(bruno.pj, 2);
   assert.equal(bruno.ga, 4);
+  assert.equal(bruno.partidosConGa, 2); // p1 (gol+asist. cuentan 1 solo partido) y p4
   assert.equal(bruno.minPorGa, (2 * MINUTOS_PARTIDO) / 4);
 });
 

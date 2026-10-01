@@ -123,7 +123,7 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
   function acc(idJugador) {
     let a = acumuladorPorJugador.get(idJugador);
     if (!a) {
-      a = { pj: 0, g: 0, asis: 0, ta: 0, tr: 0, primerGol: 0 };
+      a = { pj: 0, g: 0, asis: 0, ta: 0, tr: 0, primerGol: 0, partidosConGa: new Set() };
       acumuladorPorJugador.set(idJugador, a);
     }
     return a;
@@ -140,9 +140,12 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
       const a = acc(gol.id_goleador);
       a.g++;
       if (gol.nro_gol === 1) a.primerGol++;
+      a.partidosConGa.add(gol.id_partido);
     }
     if (gol.id_asistidor) {
-      acc(gol.id_asistidor).asis++;
+      const a = acc(gol.id_asistidor);
+      a.asis++;
+      a.partidosConGa.add(gol.id_partido);
     }
   }
 
@@ -164,6 +167,7 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
       ta: a.ta,
       tr: a.tr,
       primerGolEquipo: a.primerGol,
+      partidosConGa: a.partidosConGa.size,
       pctGaEquipo: dividirONull(ga, totalGaEquipo),
       minPorGa: dividirONull(a.pj * MINUTOS_PARTIDO, ga),
     });

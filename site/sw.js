@@ -1,7 +1,15 @@
 // App shell cacheado para que abra rápido (y sin red) después de la primera
-// visita; data.json se pide siempre a la red primero porque los datos
+// visita. data.json se pide siempre a la red primero porque los datos
 // cambian con cada partido cargado, y solo se cae al cache si no hay señal.
-const CACHE = "buitres-v1";
+//
+// El resto del shell (JS/CSS/HTML) usa "stale-while-revalidate": sirve el
+// cache al toque (rápido) pero siempre dispara un fetch en paralelo que
+// actualiza el cache para la próxima vez. Así, si se pisa este archivo con
+// contenido nuevo pero sin cambiar su nombre, el shell se auto-cura en un
+// reload en vez de quedar pegado con JS viejo para siempre (pasó una vez en
+// desarrollo: install() cacheó el contenido de ese momento y no había forma
+// de refrescarlo sin bumpear CACHE).
+const CACHE = "buitres-v2";
 const ASSETS = [
   "./",
   "index.html",
@@ -17,7 +25,9 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS.map((a) => new Request(a, { cache: "reload" }))))
+  );
   self.skipWaiting();
 });
 
@@ -46,5 +56,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  event.respondWith(
+    caches.open(CACHE).then((cache) =>
+      cache.match(event.request).then((cached) => {
+        const redFresca = fetch(event.request).then((resp) => {
+          cache.put(event.request, resp.clone());
+          return resp;
+        });
+        return cached || redFresca.catch(() => cached);
+      })
+    )
+  );
 });

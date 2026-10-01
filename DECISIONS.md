@@ -2,6 +2,35 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Nueva columna "PJ c/ G+A" (pedido de la usuaria) + bug de caché de la PWA
+
+La usuaria pidió, en la tabla de jugadores, en cuántos partidos distintos metió cada
+uno al menos un gol o asistencia (no es lo mismo que G+A: un jugador puede meter 2
+goles en el mismo partido y eso cuenta como 1 solo partido acá). Se agregó
+`partidosConGa` en `tablaJugadores()` (`stats.js` y su espejo `stats_ref.py`): un
+`Set` de `id_partido` por jugador, donde cada gol GF agrega su partido tanto al
+goleador como al asistidor (si lo tiene) — el tamaño del set es la respuesta. Columna
+"PJ c/ G+A" en la tabla, entre "G+A" y "TA".
+
+**Bug al implementarlo, encontrado durante la verificación visual:** el `<tr>` de cada
+fila en `renderJugadores()` está armado a mano con `<td>` fijos (no generado a partir
+de `COLUMNAS_JUGADORES`, que sí define el header). Agregar la columna ahí no alcanzaba
+— quedaba el header sin el dato, corriendo todas las columnas siguientes. Si solo se
+hubiera mirado el resultado con los tests de `stats.js` (que pasaban igual, porque
+prueban la función pura, no el render), esto no se hubiera detectado.
+
+De paso se encontró un segundo bug, más serio, en el service worker de la PWA agregada
+unos commits atrás: cachea el "app shell" (HTML/CSS/JS) en `install()`, pero como
+`sw.js` no cambió de contenido en este commit, el navegador no dispara un nuevo
+`install()` — el cache sigue sirviendo el JS de la versión anterior indefinidamente, a
+pesar de que `index.html`/`stats.js`/`ui.js` sí cambiaron. Se cambió la estrategia de
+"cache-first" a "stale-while-revalidate" para el shell (sirve lo cacheado al toque,
+pero siempre dispara un fetch en paralelo que actualiza el cache para la próxima vez,
+así nunca queda pegado más de una carga) y se subió `CACHE` a `"buitres-v2"` para
+limpiar lo que haya quedado cacheado del service worker ya publicado. Si en el futuro
+se cambia algo de `sw.js` mismo (no solo los assets que cachea), igual conviene subir
+el número de versión a mano.
+
 ## PWA instalable (cuarto ítem del backlog, impacto/esfuerzo)
 
 Entre lo que quedaba del backlog, se eligió esta por sobre Google Analytics (pide que

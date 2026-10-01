@@ -381,6 +381,7 @@ const COLUMNAS_JUGADORES = [
   { clave: "g", etiqueta: "G" },
   { clave: "a", etiqueta: "A" },
   { clave: "ga", etiqueta: "G+A" },
+  { clave: "partidosConGa", etiqueta: "PJ c/ G+A" },
   { clave: "ta", etiqueta: "TA" },
   { clave: "tr", etiqueta: "TR" },
   { clave: "primerGolEquipo", etiqueta: "1º gol equipo" },
@@ -407,6 +408,7 @@ function renderJugadores(cont, ids) {
             <tr>
               <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${f.nombre_mostrar}</button></td>
               <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
+              <td>${f.partidosConGa}</td>
               <td>${f.ta}</td><td>${f.tr}</td>
               <td>${f.primerGolEquipo}</td>
               <td>${fmtPorcentaje(f.pctGaEquipo)}</td><td>${fmt(f.minPorGa)}</td>

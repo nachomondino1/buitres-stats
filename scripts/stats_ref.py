@@ -80,6 +80,9 @@ def tabla_jugadores(data, ids):
         a = int((goles_gf["id_asistidor"] == id_j).sum())
         ga = g + a
         primer_gol = int(((goles_gf["id_goleador"] == id_j) & (goles_gf["nro_gol"] == 1)).sum())
+        partidos_con_ga = set(goles_gf.loc[goles_gf["id_goleador"] == id_j, "id_partido"]) | set(
+            goles_gf.loc[goles_gf["id_asistidor"] == id_j, "id_partido"]
+        )
 
         filas.append({
             "id_jugador": id_j,
@@ -88,6 +91,7 @@ def tabla_jugadores(data, ids):
             "ta": int(propias["amarillas"].sum()),
             "tr": int(propias["rojas"].sum()),
             "primerGolEquipo": primer_gol,
+            "partidosConGa": len(partidos_con_ga),
             "pctGaEquipo": (ga / total_ga_equipo) if total_ga_equipo else None,
             "minPorGa": (pj * MINUTOS_PARTIDO / ga) if ga else None,
         })
