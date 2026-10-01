@@ -2,37 +2,6 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
-## Foto del plantel (tercer ítem del backlog, elegido por impacto/esfuerzo)
-
-La usuaria pasó una foto grupal (`site/media/`) justo después del fix de Lighthouse.
-Entre el resto del backlog, mostrarla es la que menos esfuerzo pedía (no depende de
-que la usuaria configure nada externo, a diferencia de Google Analytics) y es la que
-más "cara humana" le da al sitio.
-
-El archivo original pesaba 6,4 MB (5712×4284, foto de iPhone sin comprimir) — subirlo
-tal cual hubiera tirado abajo el Performance 100/100 recién conseguido. Se redujo con
-`sips` a 1400px de ancho / calidad 65 (~380 KB) antes de commitear; el archivo grande
-original no se versionó. Se muestra arriba de las tarjetas en la vista Resumen, con
-`width`/`height` explícitos en el `<img>` para que el navegador reserve el espacio
-antes de que cargue (mismo motivo que el fix de CLS de arriba: evitar que el resto del
-contenido salte).
-
-Fotos individuales por jugador (en la ficha) quedan en el backlog — no tenemos esas
-fotos todavía.
-
-**Dónde se muestra, y por qué no en el render de la vista Resumen:** el primer intento
-la insertaba dentro de `renderResumen()` (JS), junto con las tarjetas. Eso la encadenaba
-a la carga de `data.json`: el navegador no podía pintarla hasta que el fetch + parseo +
-render terminaran, y por su tamaño (la imagen más grande del layout) pasó a ser el
-elemento de *Largest Contentful Paint* — Performance cayó 100→83 (LCP 4,2s) a pesar de
-que la imagen en sí pesaba poco. Se movió a markup estático en `index.html`, entre el
-header y los filtros (visible en todas las pestañas, no solo Resumen), con
-`<link rel="preload" fetchpriority="high">` en el `<head>` — así el navegador la pide y
-pinta en paralelo al JS, sin esperar la cadena de datos. Resultado: Performance 92,
-LCP 3,3s, CLS 0. No se persiguió el 100 exacto (quedan ~150ms de ahorro posible
-inlineando el CSS crítico) porque el esfuerzo no se justifica para un sitio de uso
-interno del grupo.
-
 ## Lighthouse real (segundo ítem del backlog): Performance 85→100
 
 La spec original pedía "Lighthouse mobile ≥ 90 en Performance y Accessibility" como

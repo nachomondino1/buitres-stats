@@ -44,10 +44,7 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
   nada que abra un navegador de verdad y clickee).
 
 **Contenido**
-- ~~Foto del plantel~~ ✅ hecho: foto grupal arriba de la vista Resumen (la
-  usuaria la pasó en `site/media/`; se redujo de 6,4 MB/5712px a ~380 KB/1400px
-  para no pegarle al Lighthouse). Fotos individuales en la ficha de jugador
-  queda pendiente (no tenemos esas fotos todavía).
+- Fotos del plantel / jugadores en la ficha.
 - Backend `gsheets` con cron semanal si el ritmo de carga de partidos cambia (hoy es
   manual a propósito, ver DECISIONS.md).
 
