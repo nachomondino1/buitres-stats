@@ -1,0 +1,3 @@
+#Comandos
+
+python generar_copia_jugadores.py data/estadisticas_buitres.xlsx estadisticas_buitres_form.xlsx
