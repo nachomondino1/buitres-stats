@@ -304,37 +304,83 @@ main {
   margin-bottom: var(--espacio);
 }
 
-.resumen-tarjeta {
+.resumen-tarjeta,
+.mini-tarjeta {
   background: var(--color-bg-elevado);
   border: 1px solid var(--color-borde);
+  border-top: 3px solid var(--color-borde);
   border-radius: var(--radio);
   padding: 0.6rem;
   text-align: center;
 }
 
-.resumen-tarjeta .valor {
-  font-size: 1.4rem;
+.resumen-tarjeta .valor,
+.mini-tarjeta .valor {
   font-weight: 700;
   display: block;
 }
 
+.resumen-tarjeta .valor {
+  font-size: 1.4rem;
+}
+
+.mini-tarjeta .valor {
+  font-size: 1.1rem;
+}
+
+.resumen-tarjeta .etiqueta,
+.mini-tarjeta .etiqueta {
+  color: var(--color-texto-tenue);
+}
+
 .resumen-tarjeta .etiqueta {
   font-size: 0.75rem;
-  color: var(--color-texto-tenue);
+}
+
+.mini-tarjeta .etiqueta {
+  font-size: 0.65rem;
+}
+
+/* G/E/P: mismos colores que ya se usan para marcar resultado en Partidos/Ficha
+   (.resultado-G/E/P), para que el ojo conecte "verde = ganado" en todos lados. */
+.tarjeta-g {
+  border-top-color: var(--color-ganado);
+}
+.tarjeta-g .valor {
+  color: var(--color-ganado);
+}
+.tarjeta-e {
+  border-top-color: var(--color-empatado);
+}
+.tarjeta-e .valor {
+  color: var(--color-empatado);
+}
+.tarjeta-p {
+  border-top-color: var(--color-perdido);
+}
+.tarjeta-p .valor {
+  color: var(--color-perdido);
 }
 
 .resumen-por-tipo {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 0.75rem;
   margin-bottom: var(--espacio);
 }
 
-.resumen-por-tipo > div {
+.tarjeta-tipo {
   background: var(--color-bg-elevado);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
   padding: 0.75rem;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 /* ---------- tablas ---------- */

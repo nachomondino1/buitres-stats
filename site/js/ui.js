@@ -293,15 +293,13 @@ function renderResumen(cont, ids) {
     return;
   }
   const tarjetas = [
-    ["PJ", r.pj], ["G", r.g], ["E", r.e], ["P", r.p],
-    ["GF", r.gf], ["GC", r.gc], ["Dif", r.dif],
-    ["% victorias", fmtPorcentaje(r.pctVictorias)],
+    ["PJ", r.pj, ""], ["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"],
+    ["GF", r.gf, ""], ["GC", r.gc, ""], ["Dif", r.dif, ""],
+    ["% victorias", fmtPorcentaje(r.pctVictorias), ""],
   ];
   cont.innerHTML = `
     <div class="resumen-grid">
-      ${tarjetas.map(([et, val]) => `
-        <div class="resumen-tarjeta"><span class="valor">${val}</span><span class="etiqueta">${et}</span></div>
-      `).join("")}
+      ${tarjetas.map(([et, val, clase]) => miniTarjeta(et, val, clase, "resumen-tarjeta")).join("")}
     </div>
     <p>Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
     <h2>Por tipo de partido</h2>
@@ -311,12 +309,26 @@ function renderResumen(cont, ids) {
   const porTipo = resumenPorTipo(estado.data, estado.filtros);
   cont.querySelector("#resumen-por-tipo").innerHTML = Object.entries(porTipo)
     .map(([tipo, r2]) => `
-      <div>
+      <div class="tarjeta-tipo">
         <strong>${tipo}</strong>
-        <p>PJ ${r2.pj} · G ${r2.g} E ${r2.e} P ${r2.p} · GF ${r2.gf} GC ${r2.gc} · ${fmtPorcentaje(r2.pctVictorias)} victorias</p>
+        <div class="mini-grid">
+          ${miniTarjeta("PJ", r2.pj)}
+          ${miniTarjeta("G", r2.g, "tarjeta-g")}
+          ${miniTarjeta("E", r2.e, "tarjeta-e")}
+          ${miniTarjeta("P", r2.p, "tarjeta-p")}
+          ${miniTarjeta("GF", r2.gf)}
+          ${miniTarjeta("GC", r2.gc)}
+          ${miniTarjeta("% vict.", fmtPorcentaje(r2.pctVictorias))}
+        </div>
       </div>
     `)
     .join("");
+}
+
+// tarjeta chica reusable: la grilla grande de arriba y las mini-grillas de
+// "por tipo de partido" comparten el mismo marcado, solo cambia el tamaño (CSS).
+function miniTarjeta(etiqueta, valor, clase = "", claseBase = "mini-tarjeta") {
+  return `<div class="${claseBase} ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
 }
 
 function etiquetaRacha(resultado) {
