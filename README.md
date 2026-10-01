@@ -61,33 +61,41 @@ no editar el marcador de `partidos` para que coincida.
 ## Publicar (CI/CD)
 
 `.github/workflows/deploy.yml` corre tests en cada push a `main` (y manual, con
-"Run workflow"). El job de publicar a GitHub Pages está **apagado hasta que exista
-el backend `gsheets`** (Fase 2b, pendiente — hoy el export solo lee `.xlsx` local).
-Setup, una sola vez, cuando se haga esa fase:
+"Run workflow"). El backend `gsheets` de `export_data.py` ya está implementado
+(`gspread` + service account de solo lectura), pero el job de publicar a GitHub
+Pages queda **apagado hasta que hagas el setup de Google** (una sola vez, es con
+tu cuenta — no lo puedo hacer yo):
 
-1. Crear un proyecto en [Google Cloud Console](https://console.cloud.google.com/) y
+1. Crear un Google Sheet **nuevo** importando `Buitres_v3.xlsx` (Archivo > Importar >
+   Reemplazar hoja de cálculo). El Sheet viejo (ancho) queda como archivo histórico,
+   sin tocar.
+2. Crear un proyecto en [Google Cloud Console](https://console.cloud.google.com/) y
    habilitar la API de Google Sheets (buscar "Google Sheets API" > Enable). La consola
    cambia de vez en cuando — si estos pasos no coinciden con lo que ves, buscá
    "enable Google Sheets API service account" en la documentación oficial vigente.
-2. Crear una service account (IAM & Admin > Service Accounts > Create) y generar una
-   clave JSON (Keys > Add key > JSON). **No commitear ese archivo.**
-3. Compartir el Google Sheet con el email de la service account (termina en
-   `...iam.gserviceaccount.com`), como lector.
-4. En GitHub: Settings > Secrets and variables > Actions:
+3. Crear una service account (IAM & Admin > Service Accounts > Create) y generar una
+   clave JSON (Keys > Add key > JSON). **No commitear ese archivo ni pegarlo en el chat.**
+4. Compartir el Google Sheet nuevo (paso 1) con el email de la service account
+   (termina en `...iam.gserviceaccount.com`), como lector.
+5. En GitHub: Settings > Secrets and variables > Actions:
    - Secret `GOOGLE_SA_JSON`: contenido completo del JSON de la service account.
    - Secret `SHEET_ID`: el ID del Sheet (está en su URL, entre `/d/` y `/edit`).
    - Variable `GSHEETS_LISTO` = `true`: recién ahí el job `deploy` del workflow se activa.
-5. En GitHub: Settings > Pages > Source: "GitHub Actions".
+6. En GitHub: Settings > Pages > Source: "GitHub Actions".
 
-En el repo: implementar `load_tables_gsheets()` en `export_data.py` (hoy tira
-`NotImplementedError` a propósito) con `gspread`, pidiendo `UNFORMATTED_VALUE` y
-convirtiendo fechas/horas desde el serial de Sheets (época 1899-12-30). Si esto se
-complica, no bloquea nada: el sitio sigue funcionando local con el backend `xlsx`.
+Probar el backend en una máquina local antes de confiar en CI:
 
-Mientras tanto, para actualizar el sitio después de cargar un partido: correr
-Fase 1 → Fase 2 local y copiar `site/` a donde se hostee (o activar Pages sin el
-backend `gsheets`, publicando el `data.json` generado a mano — no recomendado a
-largo plazo, pero funciona).
+```
+GOOGLE_SA_JSON="$(cat ruta/a/la/clave.json)" SHEET_ID="el_id_del_sheet" \
+  python export_data.py --backend gsheets --out /tmp/data.json
+```
+
+Si algo no sale, revisar primero lo más común: la service account no tiene acceso de
+lector al Sheet (paso 4), o faltan/están mal escritos los encabezados de alguna hoja.
+
+Mientras no esté listo: el sitio sigue funcionando local con el backend `xlsx`
+(Fase 2), y para actualizarlo después de cargar un partido alcanza con correr
+Fase 1 → Fase 2 local y copiar `site/` a donde se hostee.
 
 ## Otros scripts
 

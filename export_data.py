@@ -11,6 +11,7 @@ Si hay algún ERROR de validación, el export corta (exit 1) y no escribe nada.
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -18,6 +19,10 @@ from pathlib import Path
 import pandas as pd
 
 import schema
+
+# Google Sheets usa la misma época que Excel para fechas/horas como "serial":
+# un entero de días (parte entera) + fracción de día (parte decimal) desde acá.
+EPOCA_SHEETS = dt.date(1899, 12, 30)
 
 SCHEMA_VERSION = 1
 HOJAS_DATOS = ("jugadores", "partidos", "alineaciones", "goles", "listas")
@@ -106,12 +111,96 @@ def load_tables_xlsx(path):
     return tablas
 
 
+def serial_a_fecha(serial):
+    return EPOCA_SHEETS + dt.timedelta(days=int(serial))
+
+
+def serial_a_hora(serial):
+    # parte fraccionaria del día -> segundos -> time(). round() por errores de
+    # punto flotante (0.5 debería ser exactamente mediodía, no 11:59:59.99...).
+    segundos = round((float(serial) % 1) * 86400)
+    return (dt.datetime.min + dt.timedelta(seconds=segundos)).time()
+
+
+def load_tables_gsheets():
+    """Backend gsheets de load_tables(): gspread + service account de solo
+    lectura. Credenciales desde las variables de entorno GOOGLE_SA_JSON (el
+    JSON completo de la service account) y SHEET_ID (ver README, "Publicar
+    (CI/CD)" para el setup de Google, que lo hace la usuaria una sola vez)."""
+    import gspread
+    from google.oauth2.service_account import Credentials
+
+    sa_info = json.loads(os.environ["GOOGLE_SA_JSON"])
+    sheet_id = os.environ["SHEET_ID"]
+    credenciales = Credentials.from_service_account_info(
+        sa_info, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    )
+    libro = gspread.authorize(credenciales).open_by_key(sheet_id)
+
+    faltantes = []
+    tablas = {}
+    for hoja in HOJAS_DATOS:
+        try:
+            ws = libro.worksheet(hoja)
+        except gspread.exceptions.WorksheetNotFound:
+            faltantes.append(hoja)
+            continue
+        # UNFORMATTED_VALUE: igual que data_only=True en openpyxl, pero fechas/
+        # horas vienen como serial numérico (hay que convertirlas a mano, abajo).
+        valores = ws.get_values(value_render_option="UNFORMATTED_VALUE")
+        if not valores:
+            faltantes.append(hoja)
+            continue
+        encabezados = [
+            c[: -len(" (auto)")] if isinstance(c, str) and c.endswith(" (auto)") else c
+            for c in valores[0]
+        ]
+        ancho = len(encabezados)
+        # la API de Sheets no devuelve las celdas vacías al final de una fila:
+        # hay que rellenar antes de armar el DataFrame o pandas tira ValueError
+        filas = [fila + [""] * (ancho - len(fila)) for fila in valores[1:]]
+        # dtype=object desde el inicio: si se infiere "str" (default de pandas 3),
+        # el .replace("", None) de abajo recodifica el None a su propio NA, que
+        # termina apareciendo como float('nan') en vez de None (mismo problema
+        # que en normalizar(), ver DECISIONS.md).
+        df = pd.DataFrame(filas, columns=encabezados, dtype=object)
+        tablas[hoja] = df.replace("", None)  # gspread: celda vacía = "", no NaN
+
+    if faltantes:
+        raise ExportError([f"falta la hoja {h!r} en el Google Sheet" for h in faltantes])
+
+    p = tablas["partidos"]
+    def _fecha_segura(v):
+        # si la celda no es un serial numérico (p.ej. alguien tipeó texto en vez
+        # de usar el tipo fecha de Sheets), None para que validar() lo marque
+        # como "fecha inválida" en vez de reventar el export con un traceback.
+        if v is None:
+            return None
+        try:
+            return serial_a_fecha(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _hora_segura(v):
+        if v is None:
+            return None
+        try:
+            return serial_a_hora(v)
+        except (TypeError, ValueError):
+            return v  # texto suelto: se deja, formatear_hora() en construir_json lo intenta leer igual
+
+    p["fecha"] = p["fecha"].apply(_fecha_segura)
+    p["hora"] = p["hora"].apply(_hora_segura)
+    tablas["partidos"] = p
+
+    return tablas
+
+
 def load_tables(backend, source):
     if backend == "xlsx":
         return load_tables_xlsx(source)
     if backend == "gsheets":
-        # Fase 2b (SPEC §3): gspread + service account de solo lectura. Diferido.
-        raise NotImplementedError("backend 'gsheets' pendiente (Fase 2b, ver SPEC_buitres_v3.md)")
+        return load_tables_gsheets()
     raise ValueError(f"backend desconocido: {backend!r}")
 
 
@@ -287,15 +376,16 @@ def validar(tablas):
 
     for _, partido in p.iterrows():
         pid = partido["id_partido"]
+        fecha_legible = formatear_fecha(partido["fecha"])
         gf_log, gc_log = cnt_gf.get(pid, 0), cnt_gc.get(pid, 0)
         if partido["gf"] != gf_log or partido["gc"] != gc_log:
             warnings.append(
-                f"partido {pid} ({partido['fecha'].date()} vs {partido['rival']}): "
+                f"partido {pid} ({fecha_legible} vs {partido['rival']}): "
                 f"goles cargados ({gf_log} GF, {gc_log} GC) != marcador (gf={partido['gf']}, gc={partido['gc']})"
             )
         n = cnt_alin.get(pid, 0)
         if n < 7 or n > 11:
-            warnings.append(f"partido {pid} ({partido['fecha'].date()}): {n} jugadores en alineación (fuera de 7-11)")
+            warnings.append(f"partido {pid} ({fecha_legible}): {n} jugadores en alineación (fuera de 7-11)")
 
     descartados = 0
     if "link_video" in p.columns:

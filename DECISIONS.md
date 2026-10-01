@@ -2,6 +2,47 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Fase 2b — backend gsheets
+
+### `validar()` asumía que `fecha` siempre era un `pd.Timestamp`
+
+Bug real, no cubierto por los tests con mock: con el backend `xlsx`, `pandas.read_excel`
+devuelve las fechas como `pd.Timestamp` (que tiene `.date()`); el backend `gsheets`
+devuelve `datetime.date` puro (de `serial_a_fecha()`), que **no** tiene `.date()`. Las
+warnings de `validar()` hacían `partido['fecha'].date()` a mano y rompían con
+`AttributeError` solo con datos reales de Sheets. Se encontró recién al probar el
+backend contra el Google Sheet real de la usuaria (los tests con mock no lo agarraron
+porque las fechas falsas del mock eran `datetime.date`, pero el bug está en cómo se
+_usa_ el valor, no en cómo se lo genera — hay que agregar un caso con `pd.Timestamp`
+real al mock si se toca esto de nuevo). Se arregló reusando `formatear_fecha()` (que sí
+maneja ambos tipos) en vez de llamar `.date()` directo. Verificado además comparando
+bit a bit el JSON de salida del backend `xlsx` contra el de `gsheets` sobre los mismos
+datos: idénticos.
+
+### Tests con gspread mockeado, no contra la API real
+
+`tests/test_gsheets_backend.py` reemplaza `gspread.authorize` por un cliente falso
+(`monkeypatch`) que devuelve filas fijas. No hay forma de testear contra la API real de
+Sheets sin credenciales de verdad (y no corresponde que esas credenciales vivan en el
+repo ni en CI de test). Cubre: conversión de fecha/hora desde serial, celdas vacías
+("" de gspread) convertidas a `None`, filas más cortas que el encabezado (la API de
+Sheets no devuelve las celdas vacías finales de una fila), y hoja faltante.
+
+### Mismo bug de pandas 3 que en normalizar(), otra vez
+
+`pd.DataFrame(filas, columns=...).replace("", None)` volvió a convertir `None` en
+`float('nan')` (ver la entrada de Fase 2 sobre esto). Se arregló construyendo el
+DataFrame con `dtype=object` desde el inicio, antes del `.replace()`.
+
+### Fecha/hora defensivas ante texto suelto en la celda
+
+Si una celda de `fecha`/`hora` no es el tipo Fecha/Hora de Sheets (p.ej. alguien tipeó
+texto a mano), `serial_a_fecha`/`serial_a_hora` fallarían con un `TypeError` al hacer
+aritmética sobre un string. En vez de reventar el export entero, `fecha` inválida cae en
+`None` (que `validar()` ya marca como ERROR "fecha inválida", el mecanismo correcto para
+reportarlo) y `hora` inválida se deja como texto crudo (no es un campo validado, se
+intenta mostrar igual vía `formatear_hora()`).
+
 ## Fase 3 — sitio estático
 
 ### Bug de huso horario en las fechas mostradas

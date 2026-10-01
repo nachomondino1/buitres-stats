@@ -9,7 +9,14 @@ De `SPEC_buitres_v3.md` §11:
 - Revisar las fuentes de gol cargadas (tarea pendiente de la hoja `Intro` del Excel viejo).
 - Carga de partidos desde el celular (AppSheet u otro) si cargar 11 filas de alineación
   resulta pesado. Métrica: minutos por partido cargado (meta < 5).
-- Backend `gsheets` + cron (Fase 2b, diferida si el setup de Google se complica).
+
+## Pendiente (no es código, lo hace la usuaria)
+
+- Setup de Google (Fase 2b): crear el Google Sheet nuevo importando `Buitres_v3.xlsx`,
+  el proyecto de GCP + service account, compartir el Sheet, y cargar los secrets
+  `GOOGLE_SA_JSON`/`SHEET_ID` + variable `GSHEETS_LISTO=true` en GitHub. El código
+  (`load_tables_gsheets()`, el cron diario del workflow) ya está listo — ver README
+  "Publicar (CI/CD)".
 
 ## Encontrado durante Fase 1
 

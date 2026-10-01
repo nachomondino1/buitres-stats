@@ -4,12 +4,20 @@ on:
   push:
     branches: [main]
   workflow_dispatch: {}
+  # cron diario (SPEC §7.6): no hace nada hasta que el job `deploy` esté
+  # habilitado (variable de repo GSHEETS_LISTO, ver README), pero conviene
+  # dejarlo wireado desde ya en vez de acordarse de agregarlo después.
+  schedule:
+    - cron: "0 12 * * *" # 12:00 UTC = 09:00 ART
 
 permissions:
   contents: read
 
 jobs:
   test:
+    # en los disparos por cron no tiene sentido correr tests si ni siquiera el
+    # deploy está habilitado todavía (ver nota del job `deploy`, abajo)
+    if: github.event_name != 'schedule' || vars.GSHEETS_LISTO == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
