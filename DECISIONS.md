@@ -4,6 +4,16 @@ Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas
 
 ## CI/CD
 
+### Sin cron: actualización manual después de cargar un partido (confirmado por la usuaria)
+
+El workflow había quedado con cron diario (09:00 ART, SPEC §7.6). La usuaria aclaró
+que el equipo juega solo los sábados, así que correr todos los días no tiene sentido
+— la mayoría de los días no cambia nada. Se sacó el `schedule:` del workflow; por
+ahora actualizar el sitio después de cargar un partido es manual ("Run workflow" en
+GitHub, ver README). Si el ritmo de carga cambia (más partidos por semana, torneos
+seguidos), se puede volver a agregar un cron — semanal en vez de diario sería lo
+razonable para "solo sábados".
+
 ### `pytest` a secas no encontraba `export_data`/`schema` en GitHub Actions
 
 Local siempre corrí `python -m pytest` (agrega la raíz del repo a `sys.path` porque

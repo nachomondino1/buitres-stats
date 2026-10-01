@@ -58,13 +58,30 @@ en "REVISAR" es porque los goles cargados no coinciden con el marcador, o la ali
 tiene menos de 7 o más de 11 jugadores — hay que revisar esas filas en `goles`/`alineaciones`,
 no editar el marcador de `partidos` para que coincida.
 
-## Publicar (CI/CD)
+## Actualizar el sitio después de cargar un partido
 
-`.github/workflows/deploy.yml` corre tests en cada push a `main` (y manual, con
-"Run workflow"). El backend `gsheets` de `export_data.py` ya está implementado
-(`gspread` + service account de solo lectura), pero el job de publicar a GitHub
-Pages queda **apagado hasta que hagas el setup de Google** (una sola vez, es con
-tu cuenta — no lo puedo hacer yo):
+El equipo juega solo los sábados, así que **no hay cron**: actualizar el sitio
+después de cargar un partido es un paso manual (si el ritmo de carga cambia, se
+puede agregar un cron en `.github/workflows/deploy.yml`, ver el comentario ahí).
+
+1. Cargar el partido en el Google Sheet (`partidos`, `alineaciones`, `goles`) y
+   revisar la hoja `checks` (sección de abajo).
+2. En GitHub: pestaña **Actions** > workflow **Deploy** (barra lateral izquierda) >
+   botón **Run workflow** (arriba a la derecha) > **Run workflow** de nuevo para
+   confirmar.
+3. Esperar ~1 minuto (dos jobs: `test` y `deploy`) y refrescar
+   [el sitio](https://nachomondino1.github.io/buitres-stats/).
+
+Si el job `deploy` falla (aparece una ❌ en la pestaña Actions), el sitio **no se
+toca** — sigue la versión anterior publicada. El motivo casi siempre es un ERROR
+de validación (dato roto: FK, duplicado, fuera de enum, etc.); el log del job
+dice cuál.
+
+## Publicar (CI/CD) — setup de Google
+
+Ya hecho (service account, Sheet compartido, secrets `GOOGLE_SA_JSON`/`SHEET_ID`
+y variable `GSHEETS_LISTO=true` en GitHub, Pages en modo "GitHub Actions"). Queda
+documentado por si hay que rehacerlo (rotar la clave, otra cuenta, etc.):
 
 1. Crear un Google Sheet **nuevo** importando `Buitres_v3.xlsx` (Archivo > Importar >
    Reemplazar hoja de cálculo). El Sheet viejo (ancho) queda como archivo histórico,
@@ -83,7 +100,7 @@ tu cuenta — no lo puedo hacer yo):
    - Variable `GSHEETS_LISTO` = `true`: recién ahí el job `deploy` del workflow se activa.
 6. En GitHub: Settings > Pages > Source: "GitHub Actions".
 
-Probar el backend en una máquina local antes de confiar en CI:
+Probar el backend en una máquina local, sin pasar por CI:
 
 ```
 GOOGLE_SA_JSON="$(cat ruta/a/la/clave.json)" SHEET_ID="el_id_del_sheet" \
@@ -92,10 +109,6 @@ GOOGLE_SA_JSON="$(cat ruta/a/la/clave.json)" SHEET_ID="el_id_del_sheet" \
 
 Si algo no sale, revisar primero lo más común: la service account no tiene acceso de
 lector al Sheet (paso 4), o faltan/están mal escritos los encabezados de alguna hoja.
-
-Mientras no esté listo: el sitio sigue funcionando local con el backend `xlsx`
-(Fase 2), y para actualizarlo después de cargar un partido alcanza con correr
-Fase 1 → Fase 2 local y copiar `site/` a donde se hostee.
 
 ## Otros scripts
 

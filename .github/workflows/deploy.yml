@@ -4,20 +4,18 @@ on:
   push:
     branches: [main]
   workflow_dispatch: {}
-  # cron diario (SPEC §7.6): no hace nada hasta que el job `deploy` esté
-  # habilitado (variable de repo GSHEETS_LISTO, ver README), pero conviene
-  # dejarlo wireado desde ya en vez de acordarse de agregarlo después.
-  schedule:
-    - cron: "0 12 * * *" # 12:00 UTC = 09:00 ART
+  # Sin cron: el equipo juega solo los sábados, así que un disparo diario (o
+  # cualquier cadencia fija) corre en vacío casi siempre. Mientras la carga de
+  # partidos sea manual, actualizar el sitio también es manual: después de
+  # cargar un partido en el Sheet, "Run workflow" en la pestaña Actions (ver
+  # README). Si el ritmo de carga cambia, se puede agregar `schedule:` de
+  # nuevo (por ejemplo, un cron semanal los sábados a la noche).
 
 permissions:
   contents: read
 
 jobs:
   test:
-    # en los disparos por cron no tiene sentido correr tests si ni siquiera el
-    # deploy está habilitado todavía (ver nota del job `deploy`, abajo)
-    if: github.event_name != 'schedule' || vars.GSHEETS_LISTO == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

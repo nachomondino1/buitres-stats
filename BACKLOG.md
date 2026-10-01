@@ -10,14 +10,6 @@ De `SPEC_buitres_v3.md` §11:
 - Carga de partidos desde el celular (AppSheet u otro) si cargar 11 filas de alineación
   resulta pesado. Métrica: minutos por partido cargado (meta < 5).
 
-## Pendiente (no es código, lo hace la usuaria)
-
-- Setup de Google (Fase 2b): crear el Google Sheet nuevo importando `Buitres_v3.xlsx`,
-  el proyecto de GCP + service account, compartir el Sheet, y cargar los secrets
-  `GOOGLE_SA_JSON`/`SHEET_ID` + variable `GSHEETS_LISTO=true` en GitHub. El código
-  (`load_tables_gsheets()`, el cron diario del workflow) ya está listo — ver README
-  "Publicar (CI/CD)".
-
 ## Encontrado durante Fase 1
 
 - Partido 17 (26/09/2026 vs Perez el ratón) tiene el marcador final (1-4) pero le faltan
