@@ -128,8 +128,13 @@ function construirControlesFiltro() {
       <input type="date" id="f-hasta" />
     </div>
     <div class="filtro-campo">
-      <span id="f-rivales-label">Rival</span>
-      <div class="filtro-chips" role="group" aria-labelledby="f-rivales-label" id="f-rivales"></div>
+      <details class="filtro-dropdown">
+        <summary>Rival<span class="filtro-dropdown-badge" id="f-rivales-badge" hidden></span></summary>
+        <div class="filtro-dropdown-panel">
+          <input type="text" id="f-rivales-buscar" placeholder="Buscar rival…" aria-label="Buscar rival" class="input-busqueda" />
+          <div class="filtro-chips-lista" role="group" aria-label="Rival" id="f-rivales"></div>
+        </div>
+      </details>
     </div>
     <div class="filtro-campo">
       <span id="f-resultado-label">Resultado</span>
@@ -169,6 +174,7 @@ function construirControlesFiltro() {
   for (const cb of cont.querySelectorAll('input[name="rival"]')) {
     cb.checked = filtros.rivales?.has(cb.value) ?? false;
   }
+  actualizarBadgeRivales(cont);
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.checked = filtros.resultados?.has(cb.value) ?? false;
   }
@@ -200,9 +206,20 @@ function construirControlesFiltro() {
     cb.addEventListener("change", () => {
       const marcados = [...cont.querySelectorAll('input[name="rival"]:checked')].map((c) => c.value);
       estado.filtros.rivales = marcados.length ? new Set(marcados) : undefined;
+      actualizarBadgeRivales(cont);
       onFiltrosCambiaron();
     });
   }
+  cont.querySelector("#f-rivales-buscar").addEventListener("input", (e) => {
+    const busqueda = e.target.value.trim().toLowerCase();
+    for (const label of cont.querySelectorAll("#f-rivales label")) {
+      // style.display directo, no .hidden: ".filtro-chips-lista label { display:
+      // flex }" le gana en especificidad CSS al "display:none" que pone el
+      // atributo [hidden] del navegador (ambos pesan 1 clase/attr, pero la regla
+      // de acá suma un selector de tipo de más) y lo dejaba invisible solo en el DOM.
+      label.style.display = label.textContent.toLowerCase().includes(busqueda) ? "" : "none";
+    }
+  });
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.addEventListener("change", () => {
       const marcados = [...cont.querySelectorAll('input[name="resultado"]:checked')].map((c) => c.value);
@@ -232,6 +249,14 @@ function construirControlesFiltro() {
 function onFiltrosCambiaron() {
   actualizarURL();
   renderVistaActual();
+}
+
+// cuántos rivales hay tildados, para no tener que abrir el desplegable a ver
+function actualizarBadgeRivales(cont) {
+  const badge = cont.querySelector("#f-rivales-badge");
+  const n = estado.filtros.rivales?.size ?? 0;
+  badge.hidden = n === 0;
+  badge.textContent = ` (${n})`;
 }
 
 // ---------------- tabs ----------------

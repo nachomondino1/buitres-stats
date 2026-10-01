@@ -121,6 +121,93 @@ header.app-header p {
   accent-color: var(--color-acento);
 }
 
+/* "Rival": desplegable <details> (sin JS para abrir/cerrar) en vez de chips
+   sueltas, para que no ocupe espacio cerrado y escale con más rivales. */
+.filtro-dropdown {
+  position: relative;
+}
+
+.filtro-dropdown summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-bg);
+  color: var(--color-texto);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 2.25rem;
+  user-select: none;
+}
+
+.filtro-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.filtro-dropdown summary::after {
+  content: "▾";
+  color: var(--color-texto-tenue);
+  font-size: 0.75rem;
+}
+
+.filtro-dropdown[open] summary::after {
+  content: "▴";
+}
+
+.filtro-dropdown-badge {
+  color: var(--color-acento);
+  font-weight: 700;
+}
+
+.filtro-dropdown-panel {
+  position: absolute;
+  z-index: 2;
+  margin-top: 0.3rem;
+  padding: 0.6rem;
+  min-width: 220px;
+  max-width: 280px;
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.filtro-dropdown-panel .input-busqueda {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 0.5rem;
+}
+
+.filtro-chips-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.filtro-chips-lista label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.filtro-chips-lista label:hover {
+  background: color-mix(in srgb, var(--color-acento) 10%, transparent);
+}
+
+.filtro-chips-lista input {
+  accent-color: var(--color-acento);
+}
+
 .filtro-ultimos {
   display: flex;
   gap: 0.3rem;
@@ -435,5 +522,8 @@ footer.app-footer {
   }
   .filtro-chips {
     max-width: none;
+  }
+  .filtro-dropdown-panel {
+    max-width: calc(100vw - 2rem);
   }
 }
