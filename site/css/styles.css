@@ -102,6 +102,12 @@ header.app-header p {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  /* reserva el alto aprox. de los controles ya poblados: sin esto, .filtros y
+     nav.tabs arrancan casi vacíos y "empujan" todo lo de abajo de golpe
+     cuando se construyen (el mayor causante de Cumulative Layout Shift medido
+     con Lighthouse, ver DECISIONS.md). En desktop el valor es generoso a
+     propósito: mejor que sobre un poco a que quede corto y siga empujando. */
+  min-height: 4.5rem;
 }
 
 .filtro-campo {
@@ -286,6 +292,7 @@ nav.tabs {
   background: var(--color-bg-elevado);
   border-bottom: 1px solid var(--color-borde);
   -webkit-overflow-scrolling: touch;
+  min-height: 2.9rem;
 }
 
 nav.tabs button {
@@ -596,6 +603,7 @@ footer.app-footer {
 @media (max-width: 600px) {
   .filtros {
     flex-direction: column;
+    min-height: 19rem; /* acá los filtro-campo se apilan: el alto final es mucho mayor */
   }
   .filtro-chips {
     max-width: none;

@@ -33,8 +33,10 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
 - PWA (manifest + "agregar a pantalla de inicio") ya que anda bien en el celular.
 
 **Calidad / infraestructura**
-- Lighthouse real (mobile, Performance + Accessibility ≥ 90 — el DoD de la spec lo pedía
-  pero nunca se corrió la herramienta de verdad, solo revisión manual).
+- ~~Lighthouse real~~ ✅ hecho: 100/100 en las 4 categorías (Performance,
+  Accessibility, Best Practices, SEO). El único problema real era Cumulative Layout
+  Shift por `.filtros`/`nav.tabs` apareciendo vacíos y empujando el resto al cargar
+  `data.json` — arreglado con `min-height` (ver DECISIONS.md).
 - ~~`og:image` / meta tags~~ ✅ hecho: preview con el logo del equipo al compartir
   el link (WhatsApp, etc.).
 - Dominio propio en vez de `nachomondino1.github.io/buitres-stats`, si se quiere.

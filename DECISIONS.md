@@ -2,6 +2,30 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Lighthouse real (segundo ítem del backlog): Performance 85→100
+
+La spec original pedía "Lighthouse mobile ≥ 90 en Performance y Accessibility" como
+DoD de Fase 3, pero nunca se corrió la herramienta de verdad (solo revisión manual).
+Se corrió con `npx lighthouse` contra el sitio servido en local (Chrome headless, hay
+`Google Chrome.app` instalado en la máquina). Resultado antes de tocar nada:
+Accessibility/Best Practices/SEO ya estaban en 100; Performance en 85, arrastrado casi
+entero por Cumulative Layout Shift (CLS 0.264-0.46, con el peso más alto de toda la
+categoría: 25).
+
+**Causa real del CLS, y un intento fallido antes de encontrarla:** el audit señala
+`body > main` como el nodo que shiftea, pero la causa no es la altura de `main` en sí
+— es que `.filtros` y `nav.tabs` (los elementos ANTES de `main`) arrancan casi vacíos
+(se construyen recién cuando `data.json` termina de cargar) y lo empujan de golpe hacia
+abajo al poblarse. El primer intento, ponerle `min-height` a `main`, **empeoró** el
+puntaje (85→82): sobre-reservar espacio en el elemento equivocado cambia cuánto del
+viewport queda "barrido" por el shift, y puede salir peor aunque el razonamiento
+("reservar espacio reduce el salto") sea válido en general — importa *cuál* elemento.
+Una vez identificado el culpable correcto, `min-height` en `.filtros` (incluido un
+valor más alto específico para mobile, donde los filtros se apilan en columna) y en
+`nav.tabs` llevó CLS a 0.01 y Performance a 100/100. Los valores de `min-height` son
+estimaciones a mano del alto ya poblado, no un cálculo exacto — verificados a ojo en
+mobile y desktop para que no quede espacio vacío de sobra.
+
 ## Botón "Compartir": primer ítem del backlog, elegido por impacto/esfuerzo
 
 Entre las ideas de `BACKLOG.md`, se arrancó por "compartir" + `og:image` porque no
