@@ -333,6 +333,18 @@ main {
   display: none;
 }
 
+/* ---------- foto del equipo ---------- */
+
+.foto-equipo {
+  display: block;
+  width: calc(100% - 2 * var(--espacio));
+  max-width: calc(1100px - 2 * var(--espacio));
+  height: auto;
+  margin: var(--espacio) auto;
+  border-radius: var(--radio);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
 /* ---------- tarjetas de resumen ---------- */
 
 .resumen-grid {
