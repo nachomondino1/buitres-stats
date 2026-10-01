@@ -22,8 +22,8 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
   "Buscar jugador" por esto mismo, a ojo — con datos reales no haría falta adivinar).
 
 **UX / funcionalidad**
-- Botón "compartir" en Partidos/Ficha de jugador que copie el link con los filtros
-  actuales (ya viven en la URL, falta el atajo para copiarlo en el celular).
+- ~~Botón "compartir"~~ ✅ hecho: botón en el header, `navigator.share` (panel nativo
+  del celular) con fallback a copiar el link al portapapeles en desktop.
 - Recordar la columna de orden de la tabla de jugadores en la URL (hoy el filtro se
   guarda pero el orden de columna no).
 - Comparador de 2 jugadores lado a lado.
@@ -35,8 +35,8 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
 **Calidad / infraestructura**
 - Lighthouse real (mobile, Performance + Accessibility ≥ 90 — el DoD de la spec lo pedía
   pero nunca se corrió la herramienta de verdad, solo revisión manual).
-- `og:image` / meta tags para que compartir el link en WhatsApp muestre una preview
-  linda (hoy comparte sin imagen).
+- ~~`og:image` / meta tags~~ ✅ hecho: preview con el logo del equipo al compartir
+  el link (WhatsApp, etc.).
 - Dominio propio en vez de `nachomondino1.github.io/buitres-stats`, si se quiere.
 - Tests end-to-end de UI en CI (hoy: unit tests de `stats.js` + paridad Python, pero
   nada que abra un navegador de verdad y clickee).

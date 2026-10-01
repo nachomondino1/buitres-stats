@@ -62,8 +62,44 @@ async function init() {
   leerFiltrosDeURL();
   construirControlesFiltro();
   construirTabs();
+  construirBotonCompartir();
   renderFooter();
   renderVistaActual();
+}
+
+// Web Share API (navigator.share): en el celular abre el panel nativo para
+// mandar el link directo a WhatsApp/etc. ≈ no tiene equivalente en Python,
+// es la forma que da el navegador para "compartir esto" sin armar un menú a
+// mano. Si no está disponible (la mayoría de los navegadores de escritorio),
+// se cae a copiar el link al portapapeles.
+function construirBotonCompartir() {
+  const boton = document.getElementById("boton-compartir");
+  boton.addEventListener("click", async () => {
+    const url = window.location.href;
+    const datosCompartir = { title: "Los Buitres — Estadísticas", url };
+    try {
+      if (navigator.share) {
+        await navigator.share(datosCompartir);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      avisarCompartido("¡Link copiado!");
+    } catch (err) {
+      if (err.name === "AbortError") return; // el usuario cerró el panel de compartir
+      avisarCompartido("No se pudo compartir el link", true);
+    }
+  });
+}
+
+function avisarCompartido(mensaje, esError = false) {
+  const boton = document.getElementById("boton-compartir");
+  const textoOriginal = boton.textContent;
+  boton.textContent = mensaje;
+  boton.classList.toggle("boton-compartir-error", esError);
+  setTimeout(() => {
+    boton.textContent = textoOriginal;
+    boton.classList.remove("boton-compartir-error");
+  }, 2000);
 }
 
 // ---------------- filtros <-> URL ----------------

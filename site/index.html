@@ -6,11 +6,25 @@
   <title>Los Buitres — Estadísticas</title>
   <meta name="description" content="Estadísticas del equipo Los Buitres: resumen, tabla de jugadores, partidos, gráficos y dúos asistidor-goleador, con filtros." />
   <link rel="icon" type="image/png" href="media/cuadrada-transparente.png" />
+
+  <!-- preview al compartir el link (WhatsApp, etc.): URLs absolutas, varios
+       sitios de preview no resuelven bien las relativas. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nachomondino1.github.io/buitres-stats/" />
+  <meta property="og:title" content="Los Buitres — Estadísticas" />
+  <meta property="og:description" content="Resumen, tabla de jugadores, partidos, gráficos y dúos asistidor-goleador, con filtros." />
+  <meta property="og:image" content="https://nachomondino1.github.io/buitres-stats/media/cuadrada-transparente.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Los Buitres — Estadísticas" />
+  <meta name="twitter:image" content="https://nachomondino1.github.io/buitres-stats/media/cuadrada-transparente.png" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <header class="app-header">
-    <h1>Los Buitres — Estadísticas</h1>
+    <div class="app-header-fila">
+      <h1>Los Buitres — Estadísticas</h1>
+      <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+    </div>
     <p>Filtrá por tipo de partido, rival, resultado o cantidad de últimos partidos.</p>
   </header>
 

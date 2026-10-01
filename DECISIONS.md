@@ -2,6 +2,19 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Botón "Compartir": primer ítem del backlog, elegido por impacto/esfuerzo
+
+Entre las ideas de `BACKLOG.md`, se arrancó por "compartir" + `og:image` porque no
+necesitan que la usuaria configure nada externo (a diferencia de Google Analytics, que
+pide crear una cuenta/propiedad igual que gsheets) y van directo al uso real: mandar el
+link al grupo por WhatsApp después de un partido.
+
+Usa `navigator.share()` (panel nativo para elegir WhatsApp/etc, ideal en el celular) y
+si el navegador no lo soporta (la mayoría de desktop) cae a copiar el link al
+portapapeles con `navigator.clipboard.writeText()`. El link siempre es
+`window.location.href`: como los filtros, la vista activa y el jugador de la ficha ya
+viven en la URL (Fase 3), compartir "lo que se está mirando" no necesitó estado nuevo.
+
 ## Tabla de jugadores (pedido de la usuaria): columnas y "% G+A equipo"
 
 Se sacaron G/PJ, (G+A)/PJ, "% goles equipo" y "Min/gol" (ya renombrado una vez, ver
