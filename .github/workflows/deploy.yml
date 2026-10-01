@@ -1,0 +1,64 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - run: pytest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test
+        working-directory: site
+
+  # El dato real vive en Google Sheets, no en el repo (ver .gitignore: data/ no
+  # se versiona). Este job solo puede correr una vez que la usuaria haga el
+  # setup de Google (README) y cargue los secrets GOOGLE_SA_JSON y SHEET_ID
+  # (backend gsheets, SPEC_buitres_v3.md §3, Fase 2b). Mientras esos secrets no
+  # existan, el job se salta solo: el sitio no se publica, pero el job `test`
+  # de arriba sigue siendo la señal de que el código está sano.
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && vars.GSHEETS_LISTO == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+
+      - name: Exportar data.json desde Google Sheets
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python export_data.py --backend gsheets --out site/data/data.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

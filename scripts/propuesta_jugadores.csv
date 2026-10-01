@@ -1,0 +1,30 @@
+id_jugador,nombre_actual,nombre,apellido,apodo,origen,nombre_mostrar_preview,ambiguo,motivo
+J01,Tomas Coldeira,Tomas,Coldeira,,,Tomas Coldeira,,
+J02,Facundo Coldeira,Facundo,Coldeira,,,Facundo Coldeira,,
+J03,Fede Begher,Fede,Begher,,,Fede Begher,,
+J04,Nacho Mondino,Nacho,Mondino,,,Nacho Mondino,,
+J05,Alfredo Cristaldo,Alfredo,Cristaldo,,,Alfredo Cristaldo,,
+J06,Gonzalo Ruiz Diaz,Gonzalo,Ruiz Diaz,,,Gonzalo Ruiz Diaz,,
+J07,Fermin Olano,Fermin,Olano,,,Fermin Olano,,
+J08,Genaro Recabarren,Genaro,Recabarren,,,Genaro Recabarren,,
+J09,Sebastian Orlando,Sebastian,Orlando,,,Sebastian Orlando,,
+J10,Roger Fabrica,Roger,Valero,,fábrica de un amigo,Roger Valero,,confirmado por la usuaria
+J11,Emanuel Parra,Emanuel,Parra,,,Emanuel Parra,,
+J12,Ramiro Moru,Ramiro,Moru,,,Ramiro Moru,,
+J13,Tiago Mendez,Tiago,Mendez,,,Tiago Mendez,,
+J14,Bona,Tomas,Bonamino,,,Tomas Bonamino,,confirmado por la usuaria
+J15,Manu (amigo de ema),Manu,,,amigo de ema,Manu (amigo de ema),,
+J16,Matias (amigo de facu),Matias,,,amigo de facu,Matias (amigo de facu),,
+J17,Valentin (peluquero),Valentin,,,peluquero,Valentin (peluquero),,
+J18,Alan Mateuci,Alan,Mateuci,,,Alan Mateuci,,
+J19,Franco Farina,Franco,Farina,,,Franco Farina,,
+J20,Franco Raimondi,Franco,Raimondi,,,Franco Raimondi,,
+J21,Javi (amigo de ema),Javi,,,amigo de ema,Javi (amigo de ema),,
+J22,Lucas Carmona,Lucas,Carmona,,,Lucas Carmona,,
+J23,Octavio Lammens,Octavio,Lammens,,,Octavio Lammens,,
+J24,Pato (amigo gena),Pato,,,amigo gena,Pato (amigo gena),,
+J25,Rodrigo Marchese,Rodrigo,Marchese,,,Rodrigo Marchese,,
+J26,"Simon ""Chama"" Ortelli",Simon,Ortelli,Chama,,"Simon Ortelli ""Chama""",,confirmado por la usuaria
+J27,Tomas (fabrica),Tomas,,,fabrica,Tomas (fabrica),,
+J28,Tomi Mendez,Tomi,Mendez,,,Tomi Mendez,,
+J29,Valentin arquero,Valentin,,Valu,,"Valentin ""Valu""",,"confirmado por la usuaria; 'arquero' era la posición, no apellido; apellido real desconocido"

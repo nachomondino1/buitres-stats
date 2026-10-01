@@ -1,0 +1,439 @@
+:root {
+  --color-bg: #f7f7f5;
+  --color-bg-elevado: #ffffff;
+  --color-texto: #1a1a1a;
+  --color-texto-tenue: #5a5a5a;
+  --color-borde: #dddddd;
+  --color-acento: #1f6f4a;
+  --color-acento-texto: #ffffff;
+  --color-ganado: #1f6f4a;
+  --color-empatado: #b58900;
+  --color-perdido: #b33a3a;
+  --color-aviso-bg: #fff4e5;
+  --color-aviso-borde: #e0a63a;
+  --radio: 8px;
+  --espacio: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #15181a;
+    --color-bg-elevado: #1f2327;
+    --color-texto: #eaeaea;
+    --color-texto-tenue: #a8a8a8;
+    --color-borde: #33383d;
+    --color-acento: #3fa06c;
+    --color-acento-texto: #0d1410;
+    --color-ganado: #3fa06c;
+    --color-empatado: #d9ae3e;
+    --color-perdido: #e06565;
+    --color-aviso-bg: #3a2f17;
+    --color-aviso-borde: #8a6a24;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+header.app-header {
+  padding: var(--espacio);
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-bg-elevado);
+}
+
+header.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.3rem;
+}
+
+header.app-header p {
+  margin: 0;
+  color: var(--color-texto-tenue);
+  font-size: 0.85rem;
+}
+
+/* ---------- filtros ---------- */
+
+.filtros {
+  padding: var(--espacio);
+  background: var(--color-bg-elevado);
+  border-bottom: 1px solid var(--color-borde);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filtro-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.filtro-campo label {
+  font-weight: 600;
+  color: var(--color-texto-tenue);
+}
+
+.filtro-campo select,
+.filtro-campo input[type="date"],
+.filtro-campo input[type="text"],
+.filtro-campo input[type="number"] {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-bg);
+  color: var(--color-texto);
+  font-size: 0.9rem;
+  min-height: 2.25rem;
+}
+
+.filtro-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 220px;
+}
+
+.filtro-chips label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 400;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.filtro-chips input {
+  accent-color: var(--color-acento);
+}
+
+.filtro-ultimos {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.filtro-ultimos button {
+  border: 1px solid var(--color-borde);
+  background: var(--color-bg);
+  color: var(--color-texto);
+  border-radius: var(--radio);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 2.25rem;
+}
+
+.filtro-ultimos button[aria-pressed="true"] {
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  border-color: var(--color-acento);
+}
+
+.filtro-ultimos input[type="number"] {
+  width: 4.5rem;
+}
+
+button.boton-limpiar {
+  align-self: flex-end;
+  border: 1px solid var(--color-borde);
+  background: transparent;
+  color: var(--color-texto-tenue);
+  border-radius: var(--radio);
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  min-height: 2.25rem;
+}
+
+/* ---------- tabs ---------- */
+
+nav.tabs {
+  display: flex;
+  overflow-x: auto;
+  background: var(--color-bg-elevado);
+  border-bottom: 1px solid var(--color-borde);
+  -webkit-overflow-scrolling: touch;
+}
+
+nav.tabs button {
+  flex: none;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--color-texto-tenue);
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+nav.tabs button[aria-selected="true"] {
+  color: var(--color-texto);
+  border-bottom-color: var(--color-acento);
+  font-weight: 600;
+}
+
+nav.tabs button:focus-visible,
+.filtro-ultimos button:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+}
+
+main {
+  padding: var(--espacio);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+[role="tabpanel"][hidden] {
+  display: none;
+}
+
+/* ---------- tarjetas de resumen ---------- */
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: var(--espacio);
+}
+
+.resumen-tarjeta {
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0.6rem;
+  text-align: center;
+}
+
+.resumen-tarjeta .valor {
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: block;
+}
+
+.resumen-tarjeta .etiqueta {
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+.resumen-por-tipo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: var(--espacio);
+}
+
+.resumen-por-tipo > div {
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0.75rem;
+}
+
+/* ---------- tablas ---------- */
+
+.tabla-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+  background: var(--color-bg-elevado);
+}
+
+th,
+td {
+  padding: 0.5rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-elevado);
+  cursor: pointer;
+  user-select: none;
+  z-index: 1;
+}
+
+thead th[aria-sort="ascending"]::after {
+  content: " \25B2";
+}
+
+thead th[aria-sort="descending"]::after {
+  content: " \25BC";
+}
+
+/* primera columna fija en mobile (nombre de jugador / fecha de partido) */
+td:first-child,
+th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--color-bg-elevado);
+}
+
+tbody tr:hover td {
+  background: color-mix(in srgb, var(--color-acento) 8%, var(--color-bg-elevado));
+}
+
+.resultado {
+  font-weight: 700;
+}
+
+.resultado-G {
+  color: var(--color-ganado);
+}
+
+.resultado-E {
+  color: var(--color-empatado);
+}
+
+.resultado-P {
+  color: var(--color-perdido);
+}
+
+/* ---------- partidos ---------- */
+
+.partido {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-bg-elevado);
+  margin-bottom: 0.6rem;
+  overflow: hidden;
+}
+
+.partido > button.partido-resumen {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--color-texto);
+  cursor: pointer;
+  text-align: left;
+}
+
+.partido-aviso {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: var(--color-aviso-bg);
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  margin-left: 0.4rem;
+}
+
+.partido-detalle {
+  padding: 0 0.75rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.partido-detalle h4 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+}
+
+.partido-detalle ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* ---------- gráficos ---------- */
+
+.grafico-card {
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0.75rem;
+  margin-bottom: var(--espacio);
+}
+
+.grafico-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.grafico-card canvas {
+  max-height: 320px;
+}
+
+/* ---------- estados ---------- */
+
+.estado-vacio,
+.estado-error,
+.estado-carga {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-texto-tenue);
+}
+
+.estado-error {
+  color: var(--color-perdido);
+}
+
+footer.app-footer {
+  padding: var(--espacio);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+.boton-jugador {
+  background: none;
+  border: none;
+  color: var(--color-acento);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.input-busqueda {
+  width: 100%;
+  max-width: 240px;
+}
+
+@media (max-width: 600px) {
+  .filtros {
+    flex-direction: column;
+  }
+  .filtro-chips {
+    max-width: none;
+  }
+}

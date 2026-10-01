@@ -1,0 +1,8 @@
+{
+  "name": "buitres-stats-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
