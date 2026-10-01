@@ -1,8 +1,15 @@
 """
+ARCHIVADO: uso único, ya no es parte del pipeline activo (ver DECISIONS.md).
+Migró Estadisticas_Buitres.xlsx (formato ancho) a las tablas largas que se
+convirtieron en Buitres_v2.xlsx. Desde ahí en adelante los partidos se cargan
+directo en formato largo (ver scripts/build_v3.py), así que este script no
+se vuelve a correr salvo que aparezca más data vieja en formato ancho para
+migrar. Queda como referencia de cómo se hizo esa migración una vez.
+
 Migra Estadisticas_Buitres.xlsx (formato ancho) a tablas largas y valida contra
 las stats actuales de la hoja 'Estadisticas Jugadores'.
 
-Uso:  python migrar_buitres.py [entrada.xlsx] [salida.xlsx]
+Uso:  python scripts/archivo/migrar_buitres.py [entrada.xlsx] [salida.xlsx]
 Salida: jugadores, partidos, alineaciones, goles + hojas de control
         (revisar_nombres, checks, validacion).
 """

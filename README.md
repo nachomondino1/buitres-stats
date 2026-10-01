@@ -117,3 +117,8 @@ python scripts/generar_copia_jugadores.py data/estadisticas_buitres.xlsx estadis
 ```
 
 Genera una copia del Excel maestro para compartir con el plantel, sin la columna de análisis.
+
+`scripts/archivo/` tiene scripts de uso único que ya cumplieron su función (p.ej.
+`migrar_buitres.py`, que migró el Excel viejo formato ancho a Buitres_v2) — quedan
+documentados ahí por si hace falta repetir algo parecido, pero no son parte del
+pipeline activo.

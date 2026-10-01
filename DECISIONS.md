@@ -2,6 +2,23 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Limpieza de repo (pedido de la usuaria)
+
+- `.DS_Store` estaba trackeado en git desde el primer commit (antes de este trabajo).
+  Se sacó y se agregó al `.gitignore` — nunca debería versionarse.
+- `scripts/migrar_buitres.py` → `scripts/archivo/migrar_buitres.py`: hizo la migración
+  de formato ancho a largo una sola vez (se convirtió en `Buitres_v2.xlsx`, que ya
+  existía al arrancar este proyecto). Desde Fase 1 en adelante los partidos se cargan
+  directo en formato largo, así que no se vuelve a correr salvo que aparezca más data
+  vieja en formato ancho para migrar. Se archivó (no se borró del repo) porque documenta
+  cómo se hizo esa migración una vez, por si hace falta de referencia.
+- `data/buitres_normalizado.xlsx` (salida vieja de ese mismo script, no versionada
+  porque `data/` está en `.gitignore`) se borró del disco: ya no se usa, `Buitres_v3.xlsx`
+  es la fuente de verdad actual.
+- `scripts/generar_copia_jugadores.py` y `scripts/propuesta_jugadores.csv` quedaron
+  donde estaban: el primero es una utilidad reusable (generar copias para el plantel),
+  el segundo lo necesita `build_v3.py --build` como input para reconstruir `jugadores`.
+
 ## CI/CD
 
 ### Sin cron: actualización manual después de cargar un partido (confirmado por la usuaria)

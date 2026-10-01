@@ -224,7 +224,7 @@ def _actualizar_leeme(wb):
             )
         elif t.startswith("Datos migrados con migrar_buitres.py"):
             nuevo.append(
-                "Datos migrados con scripts/migrar_buitres.py. El gol de Roger Fabrica con "
+                "Datos migrados con scripts/archivo/migrar_buitres.py. El gol de Roger Fabrica con "
                 "marcador 1-4 quedó corregido: es del 26/09/2026 (ya aplicado). Ese partido "
                 "(26/09 vs Perez el ratón) todavía tiene los goles en contra (GC) sin cargar: "
                 "checks lo marca incompleto hasta que se carguen."
