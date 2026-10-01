@@ -65,6 +65,13 @@ async function init() {
   construirBotonCompartir();
   renderFooter();
   renderVistaActual();
+  registrarServiceWorker();
+}
+
+function registrarServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
 }
 
 // Web Share API (navigator.share): en el celular abre el panel nativo para

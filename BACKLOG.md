@@ -30,7 +30,8 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
 - Gráfico de evolución de % de victorias / racha a lo largo del tiempo (no solo el
   snapshot actual de "racha actual").
 - Exportar la tabla de jugadores o un partido como imagen/CSV para mandar al grupo.
-- PWA (manifest + "agregar a pantalla de inicio") ya que anda bien en el celular.
+- ~~PWA~~ ✅ hecho: manifest + ícono + service worker, instalable como app
+  ("agregar a pantalla de inicio") ya que anda bien en el celular.
 
 **Calidad / infraestructura**
 - ~~Lighthouse real~~ ✅ hecho: 100/100 en las 4 categorías (Performance,

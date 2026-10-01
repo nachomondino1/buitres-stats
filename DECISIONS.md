@@ -2,6 +2,29 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## PWA instalable (cuarto ítem del backlog, impacto/esfuerzo)
+
+Entre lo que quedaba del backlog, se eligió esta por sobre Google Analytics (pide que
+la usuaria cree una cuenta/propiedad externa, igual que gsheets) y por sobre
+comparador de jugadores / export a imagen (más esfuerzo de UI). El sitio ya "anda bien
+en el celular" (confirmado por la usuaria) así que hacerlo instalable es la forma más
+directa de aprovechar eso: ícono en la pantalla de inicio, abre a pantalla completa sin
+la barra de Chrome/Safari.
+
+`site/manifest.json` (nombre, ícono, `display: standalone`, `theme_color` tomado de
+`--color-acento`) + `site/sw.js` (service worker) + tags en `index.html`
+(`apple-touch-icon`/`apple-mobile-web-app-*` para iOS, que no lee `manifest.json`).
+Los íconos (`media/icon-192.png`, `-512.png`, `-180.png`) se generaron con `sips` desde
+el logo ya existente (`cuadrada-transparente.png`, 500×500 con alpha).
+
+El service worker cachea el "app shell" (HTML/CSS/JS/vendor/íconos) para que abra rápido
+y funcione sin red después de la primera visita, pero **`data/data.json` siempre va a la
+red primero** y solo cae al cache si no hay conexión — si cacheara los datos como el
+resto, alguien podría ver estadísticas viejas después de cargar un partido nuevo sin
+darse cuenta. No se persiguió el audit de "Installable" de Lighthouse (la CLI usada no
+trae esa categoría en esta versión); se verificó a mano que `manifest.json` y `sw.js`
+cargan bien y que el service worker queda `activated`.
+
 ## Foto del plantel: probada y revertida (feedback visual de la usuaria)
 
 Se agregó una foto grupal arriba del header (ver commit revertido), optimizada y sin
