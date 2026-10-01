@@ -1,7 +1,6 @@
 // DOM + estado de filtros <-> URL. Toda la lógica de cálculo vive en stats.js
 // (sin DOM); este archivo solo lee esos resultados y los pinta.
 import {
-  MINUTOS_PARTIDO,
   duosAsistidorGoleador,
   evolucionGfGc,
   fichaJugador,
@@ -178,10 +177,7 @@ function construirControlesFiltro() {
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.checked = filtros.resultados?.has(cb.value) ?? false;
   }
-  for (const boton of cont.querySelectorAll("[data-ultimos]")) {
-    const valor = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : null;
-    boton.setAttribute("aria-pressed", String(valor === (filtros.ultimos ?? null)));
-  }
+  actualizarBotonesUltimos(cont);
   if (filtros.ultimos != null && ![3, 5, 10].includes(filtros.ultimos)) {
     cont.querySelector("#f-ultimos-custom").value = filtros.ultimos;
   }
@@ -231,12 +227,14 @@ function construirControlesFiltro() {
     boton.addEventListener("click", () => {
       estado.filtros.ultimos = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : undefined;
       cont.querySelector("#f-ultimos-custom").value = "";
+      actualizarBotonesUltimos(cont);
       onFiltrosCambiaron();
     });
   }
   cont.querySelector("#f-ultimos-custom").addEventListener("input", (e) => {
     const valor = Number(e.target.value);
     estado.filtros.ultimos = e.target.value && valor > 0 ? valor : undefined;
+    actualizarBotonesUltimos(cont);
     onFiltrosCambiaron();
   });
   cont.querySelector(".boton-limpiar").addEventListener("click", () => {
@@ -257,6 +255,16 @@ function actualizarBadgeRivales(cont) {
   const n = estado.filtros.rivales?.size ?? 0;
   badge.hidden = n === 0;
   badge.textContent = ` (${n})`;
+}
+
+// qué botón de "últimos partidos" queda verde (aria-pressed): hay que
+// llamarla también al clickear un botón o tipear en el input custom, no solo
+// al construir los controles, si no el resaltado queda pegado en "Todos".
+function actualizarBotonesUltimos(cont) {
+  for (const boton of cont.querySelectorAll("[data-ultimos]")) {
+    const valor = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : null;
+    boton.setAttribute("aria-pressed", String(valor === (estado.filtros.ultimos ?? null)));
+  }
 }
 
 // ---------------- tabs ----------------
@@ -358,7 +366,7 @@ const COLUMNAS_JUGADORES = [
   { clave: "gaPorPj", etiqueta: "(G+A)/PJ", formato: fmt },
   { clave: "pctGolesEquipo", etiqueta: "% goles equipo", formato: fmtPorcentaje },
   { clave: "primerGolEquipo", etiqueta: "1º gol equipo" },
-  { clave: "gCadaXMin", etiqueta: `G cada ${MINUTOS_PARTIDO}min`, formato: fmt },
+  { clave: "minPorGol", etiqueta: "Min/gol", formato: fmt },
 ];
 
 function renderJugadores(cont, ids) {
@@ -383,7 +391,7 @@ function renderJugadores(cont, ids) {
               <td>${f.ta}</td><td>${f.tr}</td>
               <td>${fmt(f.gPorPj)}</td><td>${fmt(f.gaPorPj)}</td>
               <td>${fmtPorcentaje(f.pctGolesEquipo)}</td>
-              <td>${f.primerGolEquipo}</td><td>${fmt(f.gCadaXMin)}</td>
+              <td>${f.primerGolEquipo}</td><td>${fmt(f.minPorGol)}</td>
             </tr>
           `).join("")}
         </tbody>

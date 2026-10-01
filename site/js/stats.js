@@ -4,7 +4,8 @@
 // paridad — por eso toda fórmula matemática tiene que coincidir exacto con §5
 // de SPEC_buitres_v3.md.
 
-// Constante configurable: así calculaba "G cada x min" el Excel viejo.
+// Constante configurable: así calculaba "minutos por gol" el Excel viejo
+// (pj * MINUTOS_PARTIDO ≈ minutos jugados, sin datos reales de minutaje).
 export const MINUTOS_PARTIDO = 70;
 
 // division ≈ Python, pero acá "a / 0" da Infinity en vez de ZeroDivisionError;
@@ -164,7 +165,7 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
       gaPorPj: dividirONull(ga, a.pj),
       pctGolesEquipo: dividirONull(a.g, totalGolesEquipo),
       primerGolEquipo: a.primerGol,
-      gCadaXMin: dividirONull(a.pj * MINUTOS_PARTIDO, a.g),
+      minPorGol: dividirONull(a.pj * MINUTOS_PARTIDO, a.g),
     });
   }
   return filas;

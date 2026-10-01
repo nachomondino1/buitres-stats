@@ -90,6 +90,6 @@ def tabla_jugadores(data, ids):
             "gaPorPj": (ga / pj) if pj else None,
             "pctGolesEquipo": (g / total_goles_equipo) if total_goles_equipo else None,
             "primerGolEquipo": primer_gol,
-            "gCadaXMin": (pj * MINUTOS_PARTIDO / g) if g else None,
+            "minPorGol": (pj * MINUTOS_PARTIDO / g) if g else None,
         })
     return filas

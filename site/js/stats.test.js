@@ -151,7 +151,7 @@ test("tablaJugadores: división por cero da null, nunca NaN/Infinity", () => {
   const filas = tablaJugadores(DATA, new Set([2])); // Ana jugó, no metió goles ni asistió
   const ana = filas[0];
   assert.equal(ana.gPorPj, 0); // 0 goles / 1 pj = 0, no es división por cero
-  assert.equal(ana.gCadaXMin, null); // 0 goles en el denominador de "cada X goles": null
+  assert.equal(ana.minPorGol, null); // 0 goles en el denominador de minutos/gol: null
 });
 
 test("tablaJugadores: búsqueda de texto por nombre (case-insensitive)", () => {
@@ -159,12 +159,12 @@ test("tablaJugadores: búsqueda de texto por nombre (case-insensitive)", () => {
   assert.deepEqual(filas.map((f) => f.nombre_mostrar), ["Ana"]);
 });
 
-test("'G cada x min' usa MINUTOS_PARTIDO", () => {
+test("minPorGol usa MINUTOS_PARTIDO", () => {
   const filas = tablaJugadores(DATA, TODOS);
   const bruno = filas.find((f) => f.id_jugador === "J02"); // partidos 1 y 4: pj=2, g=3 (p1 nro2, p4 nro1 y nro2)
   assert.equal(bruno.pj, 2);
   assert.equal(bruno.g, 3);
-  assert.equal(bruno.gCadaXMin, (2 * MINUTOS_PARTIDO) / 3);
+  assert.equal(bruno.minPorGol, (2 * MINUTOS_PARTIDO) / 3);
 });
 
 // ---------------- partidosConDetalle / fichaJugador ----------------
