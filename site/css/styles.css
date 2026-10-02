@@ -554,36 +554,24 @@ main {
   font-size: 0.75rem;
 }
 
-/* ---------- secciones plegables de Resumen ---------- */
+/* ---------- secciones de Resumen ---------- */
 
-/* Rachas / Jugadores destacados / Datos curiosos: antes eran <h2> siempre
-   abiertos, pero juntos abrumaban la primera pantalla de Resumen (pedido de
-   la usuaria). Ahora son <details> cerrados por defecto: el título queda
-   visible como un h2 normal, pero hay que tocarlo para ver las tarjetas. */
-.resumen-seccion summary {
+/* Rachas / Jugadores destacados / Datos curiosos apilados y siempre abiertos
+   abrumaban la primera pantalla de Resumen (pedido de la usuaria). En vez de
+   plegarlos, cada uno es su propio <section> con mucho aire alrededor, para
+   que se lean de a uno a medida que se scrollea en vez de todos juntos. La
+   primera ("Resultados") ocupa la pantalla completa al entrar, como una
+   portada, y recién al scrollear aparece el resto. */
+.resumen-bloque {
+  padding: 3rem 0;
+}
+
+.resumen-bloque-hero {
+  min-height: 100vh;
+  padding-top: 1.5rem;
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  list-style: none;
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 0.83em 0;
-  user-select: none;
-}
-
-.resumen-seccion summary::-webkit-details-marker {
-  display: none;
-}
-
-.resumen-seccion summary::after {
-  content: "▾";
-  color: var(--color-texto-tenue);
-  font-size: 0.6em;
-}
-
-.resumen-seccion[open] summary::after {
-  content: "▴";
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ---------- jugadores destacados (Resumen) ---------- */

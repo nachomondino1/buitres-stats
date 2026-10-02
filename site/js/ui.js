@@ -498,17 +498,22 @@ function renderResumen(cont, ids) {
     return;
   }
   const forma = ultimosResultados(estado.data, ids, 5);
+  const seccionRachas = renderRachasHistoricas(ids, r.racha);
+  const seccionDestacados = renderJugadoresDestacados(ids);
+  const seccionCuriosos = renderDatosCuriosos(ids);
   cont.innerHTML = `
-    <h2>Resultados</h2>
-    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-grid-hero")}
-    ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
-    ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
-    ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
-    <p class="resumen-forma">Últimos partidos: ${puntosForma(forma)}</p>
-    ${tarjetaUltimo}
-    ${renderRachasHistoricas(ids, r.racha)}
-    ${renderJugadoresDestacados(ids)}
-    ${renderDatosCuriosos(ids)}
+    <section class="resumen-bloque resumen-bloque-hero">
+      <h2>Resultados</h2>
+      ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-grid-hero")}
+      ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
+      ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
+      ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
+      <p class="resumen-forma">Últimos partidos: ${puntosForma(forma)}</p>
+      ${tarjetaUltimo}
+    </section>
+    ${seccionRachas ? `<section class="resumen-bloque">${seccionRachas}</section>` : ""}
+    ${seccionDestacados ? `<section class="resumen-bloque">${seccionDestacados}</section>` : ""}
+    ${seccionCuriosos ? `<section class="resumen-bloque">${seccionCuriosos}</section>` : ""}
   `;
   activarScrollASecciones(cont);
   for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
@@ -530,13 +535,11 @@ function renderRachasHistoricas(ids, rachaActual) {
   ];
   if (!rachaActual && items.every(([, racha]) => !racha)) return "";
   return `
-    <details class="resumen-seccion">
-      <summary>Rachas</summary>
-      <div class="destacados-grid">
-        ${tarjetaRachaActual(rachaActual)}
-        ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
-      </div>
-    </details>
+    <h2>Rachas</h2>
+    <div class="destacados-grid">
+      ${tarjetaRachaActual(rachaActual)}
+      ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
+    </div>
   `;
 }
 
@@ -586,12 +589,10 @@ function renderJugadoresDestacados(ids) {
   ];
   if (items.every(([, v]) => !v)) return "";
   return `
-    <details class="resumen-seccion">
-      <summary>Jugadores destacados</summary>
-      <div class="destacados-grid">
-        ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
-      </div>
-    </details>
+    <h2>Jugadores destacados</h2>
+    <div class="destacados-grid">
+      ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
+    </div>
   `;
 }
 
@@ -658,12 +659,10 @@ function renderDatosCuriosos(ids) {
 
   if (tarjetas.length === 0) return "";
   return `
-    <details class="resumen-seccion">
-      <summary>Datos curiosos</summary>
-      <div class="destacados-grid">
-        ${tarjetas.join("")}
-      </div>
-    </details>
+    <h2>Datos curiosos</h2>
+    <div class="destacados-grid">
+      ${tarjetas.join("")}
+    </div>
   `;
 }
 
