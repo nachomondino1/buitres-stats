@@ -40,20 +40,25 @@
           async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
-  <header class="app-header">
-    <div class="app-header-fila">
-      <h1><button type="button" class="boton-titulo" id="boton-titulo">Los Buitres — Estadísticas</button></h1>
-      <div class="app-header-acciones">
-        <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar tema">🌓</button>
-        <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+  <div class="app-top">
+    <header class="app-header">
+      <div class="app-header-fila">
+        <h1>
+          <button type="button" class="boton-titulo" id="boton-titulo">
+            <img src="media/icon-192.png" alt="" class="logo-escudo" width="28" height="28" />
+            Los Buitres
+          </button>
+        </h1>
+        <nav class="tabs" role="tablist" aria-label="Vistas"></nav>
+        <div class="app-header-acciones">
+          <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar tema">🌓</button>
+          <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+        </div>
       </div>
-    </div>
-    <p>Filtrá por tipo de partido, rival, resultado o cantidad de últimos partidos.</p>
-  </header>
+    </header>
 
-  <div class="filtros" aria-label="Filtros"></div>
-
-  <nav class="tabs" role="tablist" aria-label="Vistas"></nav>
+    <div class="filtros" aria-label="Filtros"></div>
+  </div>
 
   <main>
     <div class="skeleton" aria-hidden="true">

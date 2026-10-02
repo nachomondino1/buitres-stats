@@ -132,6 +132,9 @@ header.app-header h1 {
 }
 
 .boton-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   border: none;
   background: none;
   padding: 0;
@@ -146,18 +149,31 @@ header.app-header h1 {
   color: var(--color-acento);
 }
 
+.logo-escudo {
+  display: block;
+  flex: none;
+  border-radius: 4px;
+}
+
 .app-header-fila {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.25rem;
 }
 
-header.app-header p {
-  margin: 0;
-  color: var(--color-texto-tenue);
-  font-size: 0.85rem;
+/* en desktop el nav vive en esta fila, entre el título y las acciones (pedido
+   de la usuaria); en mobile vuelve a "pestañas fijas abajo" vía position:fixed
+   (ver media query de 600px) y queda afuera del flujo, así que esto no le
+   afecta. Sin flex-grow: el nav mide lo que miden sus botones (ni más ni
+   menos), así que justify-content:space-between en .app-header-fila ya lo
+   deja más o menos centrado entre título y acciones. Si en una pantalla
+   angosta no entran los tres (título + 4 pestañas + acciones), nav.tabs ya
+   tiene overflow-x:auto para scrollear en vez de desbordar la fila. */
+@media (min-width: 601px) {
+  .app-header-fila h1 {
+    flex: none;
+  }
 }
 
 .app-header-acciones {
@@ -378,27 +394,33 @@ button.boton-limpiar {
 
 nav.tabs {
   display: flex;
-  justify-content: center;
+  /* flex-start, no center: con overflow-x:auto, centrar un contenido que no
+     entra dejaba el principio (la pestaña "Resumen") recortado y
+     inalcanzable con scroll en pantallas desktop angostas (601-750px aprox,
+     donde el nav ahora comparte fila con el título). Con flex-start todo
+     queda siempre alcanzable scrolleando hacia la derecha. */
+  justify-content: flex-start;
   overflow-x: auto;
   background: var(--color-bg-elevado);
-  border-bottom: 1px solid var(--color-borde);
   -webkit-overflow-scrolling: touch;
   min-height: 2.9rem;
 }
 
-/* en desktop (en mobile ya va fija abajo, ver media query de 600px) clavada
-   arriba al scrollear: Equipo y Jugadores quedaron páginas largas con varias
-   secciones, tener el nav siempre a mano evita volver arriba a mano para
-   cambiar de vista. scroll-margin-top en las secciones es para que el
-   scroll-to-section (subnav, tocar un jugador) no quede tapado por la barra. */
+/* en desktop (en mobile ya va fija abajo, ver media query de 600px) clavado
+   arriba al scrollear todo el bloque título+nav+filtros junto: Equipo y
+   Jugadores quedaron páginas largas con varias secciones, tener el nav y los
+   filtros siempre a mano evita volver arriba a mano para cambiar de vista o
+   filtro. scroll-margin-top en las secciones es para que el scroll-to-section
+   (subnav, tocar un jugador) no quede tapado por la barra; el valor sale de
+   medir el alto real de .app-top (título+nav+filtros) en desktop. */
 @media (min-width: 601px) {
-  nav.tabs {
+  .app-top {
     position: sticky;
     top: 0;
     z-index: 10;
   }
   main section[id] {
-    scroll-margin-top: 2.9rem;
+    scroll-margin-top: 11rem;
   }
 }
 
