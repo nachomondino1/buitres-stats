@@ -3,14 +3,17 @@ import { test } from "node:test";
 
 import {
   MINUTOS_PARTIDO,
+  datosCuriosos,
   duosAsistidorGoleador,
   evolucionGfGc,
   fichaJugador,
   filtrarPartidos,
   fuentePorTipoGol,
   golesPorTiempo,
+  historialRivales,
   jugadoresDestacados,
   partidosConDetalle,
+  rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
   ultimoPartido,
@@ -112,14 +115,103 @@ test("resumenEquipo sobre todos los partidos", () => {
   assert.equal(r.gc, 3);
   assert.equal(r.dif, 3);
   assert.equal(r.pctVictorias, 0.5);
+  assert.equal(r.promedioGf, 1.5);
+  assert.equal(r.promedioGc, 0.75);
   assert.deepEqual(r.racha, { resultado: "G", cantidad: 1 }); // el más nuevo (P4=G) corta al toparse con P3=P
 });
 
-test("resumenEquipo con set vacío: todo 0, pctVictorias y racha null (borde)", () => {
+test("resumenEquipo con set vacío: todo 0, pctVictorias/promedios y racha null (borde)", () => {
   const r = resumenEquipo(DATA, new Set());
   assert.equal(r.pj, 0);
   assert.equal(r.pctVictorias, null);
+  assert.equal(r.promedioGf, null);
+  assert.equal(r.promedioGc, null);
   assert.equal(r.racha, null);
+});
+
+// ---------------- historialRivales ----------------
+
+test("historialRivales: una fila por rival, ordenado por PJ desc y después alfabético", () => {
+  const filas = historialRivales(DATA, TODOS);
+  assert.deepEqual(filas.map((f) => f.rival), ["Rival A", "Rival B", "Rival C"]);
+
+  const rivalA = filas.find((f) => f.rival === "Rival A");
+  assert.equal(rivalA.pj, 2);
+  assert.equal(rivalA.g, 1);
+  assert.equal(rivalA.p, 1);
+  assert.equal(rivalA.gf, 3);
+  assert.equal(rivalA.gc, 3);
+  assert.equal(rivalA.dif, 0);
+  assert.equal(rivalA.pctVictorias, 0.5);
+
+  const rivalC = filas.find((f) => f.rival === "Rival C");
+  assert.equal(rivalC.pj, 1);
+  assert.equal(rivalC.pctVictorias, 1);
+});
+
+test("historialRivales con set vacío: lista vacía (borde)", () => {
+  assert.deepEqual(historialRivales(DATA, new Set()), []);
+});
+
+// ---------------- datosCuriosos ----------------
+// P1 10/01 Rival A G 2-1, P2 17/01 Rival B E 0-0, P3 24/01 Rival A P 1-2,
+// P4 31/01 Rival C G 3-0 (Bruno mete 2 de los 3 goles de este partido)
+
+test("datosCuriosos sobre todos los partidos", () => {
+  const d = datosCuriosos(DATA, TODOS);
+
+  assert.deepEqual(d.rivalRepetido, { rival: "Rival A", pj: 2, g: 1, e: 0, p: 1 });
+
+  assert.equal(d.marcadorRepetido, null); // los 4 marcadores son distintos
+
+  // jugador amuleto: mínimo 2 PJ (mitad de 4); Bruno (J02) jugó P1 y P4,
+  // ganó los 2 -> 100%, mejor que Ana (J01, 1/3) y Carla (J03, 1/2)
+  assert.equal(d.jugadorAmuleto.idJugador, "J02");
+  assert.equal(d.jugadorAmuleto.pj, 2);
+  assert.equal(d.jugadorAmuleto.pctVictorias, 1);
+
+  // más goles en un partido: Bruno metió 2 de los 3 goles del 3-0 a Rival C
+  assert.equal(d.masGolesUnPartido.idJugador, "J02");
+  assert.equal(d.masGolesUnPartido.cantidad, 2);
+  assert.equal(d.masGolesUnPartido.fecha, "2026-01-31");
+
+  assert.deepEqual(d.vallaInvicta, { cantidad: 2, pj: 4, pct: 0.5 }); // P2 (0-0) y P4 (3-0)
+
+  // partido más desparejo: el 3-0 a Rival C (diferencia de 3, la mayor)
+  assert.deepEqual(d.partidoMasDesparejo, { fecha: "2026-01-31", rival: "Rival C", gf: 3, gc: 0, aFavor: true });
+});
+
+test("datosCuriosos con set vacío: todo null (borde)", () => {
+  const d = datosCuriosos(DATA, new Set());
+  assert.equal(d.rivalRepetido, null);
+  assert.equal(d.marcadorRepetido, null);
+  assert.equal(d.jugadorAmuleto, null);
+  assert.equal(d.masGolesUnPartido, null);
+  assert.equal(d.vallaInvicta, null);
+  assert.equal(d.partidoMasDesparejo, null);
+});
+
+// ---------------- rachasHistoricas ----------------
+// orden cronológico: P1=G (01-10), P2=E (01-17), P3=P (01-24), P4=G (01-31)
+
+test("rachasHistoricas sobre todos los partidos", () => {
+  const r = rachasHistoricas(DATA, TODOS);
+  // G,E,P,G: ninguna racha ganadora/perdedora de más de 1 (en empate de
+  // longitud, gana la más vieja)
+  assert.deepEqual(r.ganando, { cantidad: 1, desde: "2026-01-10", hasta: "2026-01-10" });
+  assert.deepEqual(r.perdiendo, { cantidad: 1, desde: "2026-01-24", hasta: "2026-01-24" });
+  // sin ganar: E,P seguidos (P2-P3) es la racha más larga
+  assert.deepEqual(r.sinGanar, { cantidad: 2, desde: "2026-01-17", hasta: "2026-01-24" });
+  // sin perder (invicto): G,E seguidos (P1-P2)
+  assert.deepEqual(r.sinPerder, { cantidad: 2, desde: "2026-01-10", hasta: "2026-01-17" });
+});
+
+test("rachasHistoricas con set vacío: todo null (borde)", () => {
+  const r = rachasHistoricas(DATA, new Set());
+  assert.equal(r.ganando, null);
+  assert.equal(r.perdiendo, null);
+  assert.equal(r.sinGanar, null);
+  assert.equal(r.sinPerder, null);
 });
 
 // ---------------- tablaJugadores ----------------

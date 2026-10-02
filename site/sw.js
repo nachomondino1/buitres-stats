@@ -9,7 +9,7 @@
 // reload en vez de quedar pegado con JS viejo para siempre (pasó una vez en
 // desarrollo: install() cacheó el contenido de ese momento y no había forma
 // de refrescarlo sin bumpear CACHE).
-const CACHE = "buitres-v2";
+const CACHE = "buitres-v3";
 const ASSETS = [
   "./",
   "index.html",

@@ -122,7 +122,68 @@ export function resumenEquipo(data, idsPartidos) {
     pj, g, e, p, gf, gc,
     dif: gf - gc,
     pctVictorias: dividirONull(g, pj),
+    promedioGf: dividirONull(gf, pj),
+    promedioGc: dividirONull(gc, pj),
     racha,
+  };
+}
+
+/** Historial G/E/P y goles contra cada rival del set filtrado (vista
+ * Equipo): una fila por rival enfrentado, no solo el más repetido como
+ * rivalMasEnfrentado() en datosCuriosos(). Orden por defecto: más enfrentado
+ * primero (la UI puede reordenar por columna). */
+export function historialRivales(data, idsPartidos) {
+  const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
+  const porRival = new Map();
+  for (const p of partidos) {
+    let c = porRival.get(p.rival);
+    if (!c) {
+      c = { rival: p.rival, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0 };
+      porRival.set(p.rival, c);
+    }
+    c.pj++;
+    c.gf += p.gf;
+    c.gc += p.gc;
+    if (p.resultado === "G") c.g++;
+    else if (p.resultado === "E") c.e++;
+    else c.p++;
+  }
+  return [...porRival.values()]
+    .map((c) => ({ ...c, dif: c.gf - c.gc, pctVictorias: dividirONull(c.g, c.pj) }))
+    .sort((a, b) => b.pj - a.pj || a.rival.localeCompare(b.rival));
+}
+
+// recorre los partidos en orden cronológico y devuelve la racha consecutiva
+// más larga que cumple `predicado`, con sus fechas límite (null si ninguno
+// cumple).
+function rachaMasLarga(partidosOrdenados, predicado) {
+  let mejor = null;
+  let actual = null;
+  for (const partido of partidosOrdenados) {
+    if (predicado(partido.resultado)) {
+      actual = actual
+        ? { cantidad: actual.cantidad + 1, desde: actual.desde, hasta: partido.fecha }
+        : { cantidad: 1, desde: partido.fecha, hasta: partido.fecha };
+      if (!mejor || actual.cantidad > mejor.cantidad) mejor = actual;
+    } else {
+      actual = null;
+    }
+  }
+  return mejor;
+}
+
+/** Rachas históricas (no solo la actual) del set filtrado: la racha
+ * ganadora/perdedora más larga, y la más larga sin ganar / sin perder
+ * (invicta). Cada una con su rango de fechas, o null si nunca se dio. */
+export function rachasHistoricas(data, idsPartidos) {
+  const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
+  const ordenados = partidos.slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  return {
+    ganando: rachaMasLarga(ordenados, (r) => r === "G"),
+    perdiendo: rachaMasLarga(ordenados, (r) => r === "P"),
+    sinGanar: rachaMasLarga(ordenados, (r) => r !== "G"),
+    sinPerder: rachaMasLarga(ordenados, (r) => r !== "P"),
   };
 }
 
@@ -300,4 +361,135 @@ export function duosAsistidorGoleador(data, idsPartidos) {
       };
     })
     .sort((a, b) => b.cantidad - a.cantidad);
+}
+
+// ---------------- datos curiosos (vista Resumen) ----------------
+// Cada helper devuelve null si el hecho no aplica (sin repeticiones, muestra
+// chica, etc.), igual que jugadoresDestacados(): "nadie se destaca" es un
+// resultado válido, no un error. Así la sección crece sola a medida que se
+// cargan más partidos, en vez de depender de lo que haya hoy.
+
+function rivalMasEnfrentado(partidos) {
+  const porRival = new Map();
+  for (const p of partidos) {
+    let c = porRival.get(p.rival);
+    if (!c) {
+      c = { rival: p.rival, pj: 0, g: 0, e: 0, p: 0 };
+      porRival.set(p.rival, c);
+    }
+    c.pj++;
+    if (p.resultado === "G") c.g++;
+    else if (p.resultado === "E") c.e++;
+    else c.p++;
+  }
+  const mejor = [...porRival.values()].reduce((m, c) => (c.pj > (m?.pj ?? 0) ? c : m), null);
+  return mejor && mejor.pj >= 2 ? mejor : null;
+}
+
+// "repetido" = pasó 2+ veces; si hay empate entre varios marcadores con la
+// misma cantidad máxima, se muestran todos (no se elige uno arbitrario).
+function marcadorMasRepetido(partidos) {
+  const conteo = new Map();
+  for (const p of partidos) {
+    const marcador = `${p.gf}-${p.gc}`;
+    conteo.set(marcador, (conteo.get(marcador) ?? 0) + 1);
+  }
+  const cantidad = Math.max(0, ...conteo.values());
+  if (cantidad < 2) return null;
+  const marcadores = [...conteo.entries()].filter(([, c]) => c === cantidad).map(([marcador]) => marcador);
+  return { marcadores, cantidad };
+}
+
+// jugador "amuleto": mejor % de victorias del equipo en los partidos que
+// jugó, entre quienes jugaron al menos la mitad del set filtrado (si no,
+// cualquiera con 2 PJ y 2 victorias "sería" 100% amuleto, ruido puro).
+function jugadorConMejorPctVictorias(data, idsPartidos, partidos) {
+  const pjTotal = partidos.length;
+  if (pjTotal === 0) return null;
+  const minimo = Math.ceil(pjTotal / 2);
+  const resultadoPorPartido = new Map(partidos.map((p) => [p.id_partido, p.resultado]));
+
+  const partidosPorJugador = new Map();
+  for (const al of data.alineaciones) {
+    if (!idsPartidos.has(al.id_partido)) continue;
+    let set = partidosPorJugador.get(al.id_jugador);
+    if (!set) {
+      set = new Set();
+      partidosPorJugador.set(al.id_jugador, set);
+    }
+    set.add(al.id_partido);
+  }
+
+  let mejor = null;
+  for (const jugador of data.jugadores) {
+    const pids = partidosPorJugador.get(jugador.id_jugador);
+    if (!pids || pids.size < minimo) continue;
+    let g = 0;
+    for (const pid of pids) if (resultadoPorPartido.get(pid) === "G") g++;
+    const pctVictorias = g / pids.size;
+    if (!mejor || pctVictorias > mejor.pctVictorias) {
+      mejor = { idJugador: jugador.id_jugador, nombre: jugador.nombre_mostrar, pj: pids.size, g, pctVictorias };
+    }
+  }
+  return mejor;
+}
+
+// póker/hat-trick: más goles de un mismo jugador en un solo partido. Un
+// máximo de 1 (nadie metió nunca 2 en el mismo partido) no es "curioso".
+function masGolesEnUnPartido(data, idsPartidos, nombrePorId) {
+  const conteo = new Map(); // `${id_partido}|${id_goleador}` -> cantidad
+  for (const gol of data.goles) {
+    if (!idsPartidos.has(gol.id_partido) || gol.tipo_gol !== "GF" || !gol.id_goleador) continue;
+    const clave = `${gol.id_partido}|${gol.id_goleador}`;
+    conteo.set(clave, (conteo.get(clave) ?? 0) + 1);
+  }
+  let mejor = null;
+  for (const [clave, cantidad] of conteo) {
+    if (!mejor || cantidad > mejor.cantidad) {
+      const [idPartido, idJugador] = clave.split("|");
+      mejor = { idPartido: Number(idPartido), idJugador, cantidad };
+    }
+  }
+  if (!mejor || mejor.cantidad < 2) return null;
+  const partido = data.partidos.find((p) => p.id_partido === mejor.idPartido);
+  return {
+    idJugador: mejor.idJugador,
+    nombre: nombrePorId.get(mejor.idJugador) ?? mejor.idJugador,
+    cantidad: mejor.cantidad,
+    fecha: partido.fecha,
+    rival: partido.rival,
+  };
+}
+
+function vallaInvicta(partidos) {
+  const cantidad = partidos.filter((p) => p.gc === 0).length;
+  if (cantidad === 0) return null;
+  return { cantidad, pj: partidos.length, pct: dividirONull(cantidad, partidos.length) };
+}
+
+// el partido con mayor diferencia de gol, a favor o en contra (el que más
+// "se salió de lo normal" en el set filtrado).
+function partidoMasDesparejo(partidos) {
+  if (partidos.length === 0) return null;
+  const mejor = partidos.reduce((m, p) => (Math.abs(p.gf - p.gc) > Math.abs(m.gf - m.gc) ? p : m));
+  if (mejor.gf === mejor.gc) return null; // borde: set filtrado donde todo fue empate
+  return { fecha: mejor.fecha, rival: mejor.rival, gf: mejor.gf, gc: mejor.gc, aFavor: mejor.gf > mejor.gc };
+}
+
+/** Datos curiosos / coincidencias del set filtrado, para la vista Resumen:
+ * rival más enfrentado (con su historial), marcador que más se repitió,
+ * jugador "amuleto", póker/hat-trick en un partido, vallas invictas y el
+ * partido más desparejo. Cada uno null si no aplica (ver helpers arriba). */
+export function datosCuriosos(data, idsPartidos) {
+  const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
+  const nombrePorId = new Map(data.jugadores.map((j) => [j.id_jugador, j.nombre_mostrar]));
+
+  return {
+    rivalRepetido: rivalMasEnfrentado(partidos),
+    marcadorRepetido: marcadorMasRepetido(partidos),
+    jugadorAmuleto: jugadorConMejorPctVictorias(data, idsPartidos, partidos),
+    masGolesUnPartido: masGolesEnUnPartido(data, idsPartidos, nombrePorId),
+    vallaInvicta: vallaInvicta(partidos),
+    partidoMasDesparejo: partidoMasDesparejo(partidos),
+  };
 }

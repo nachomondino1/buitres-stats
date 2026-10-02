@@ -286,7 +286,9 @@ header.app-header p {
 
 .filtro-dropdown-panel {
   position: absolute;
-  z-index: 2;
+  /* > z-index del nav.tabs sticky (10, ver media query de 601px): si no, al
+     scrollear el nav queda pegado arriba y tapa el desplegable abierto. */
+  z-index: 20;
   margin-top: 0.3rem;
   padding: 0.6rem;
   min-width: 220px;

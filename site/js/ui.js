@@ -1,14 +1,17 @@
 // DOM + estado de filtros <-> URL. Toda la lógica de cálculo vive en stats.js
 // (sin DOM); este archivo solo lee esos resultados y los pinta.
 import {
+  datosCuriosos,
   duosAsistidorGoleador,
   evolucionGfGc,
   fichaJugador,
   filtrarPartidos,
   fuentePorTipoGol,
   golesPorTiempo,
+  historialRivales,
   jugadoresDestacados,
   partidosConDetalle,
+  rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
   ultimoPartido,
@@ -20,6 +23,9 @@ import { dibujarEvolucion, dibujarRanking, dibujarFuenteGoles, dibujarGolesPorTi
 // de decimales en la UI, ni en "Min/G+A" ni en los porcentajes).
 const fmtNum = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const fmtPct = new Intl.NumberFormat("es-AR", { style: "percent", maximumFractionDigits: 0 });
+// excepción a la regla de "nada de decimales": un promedio de goles por
+// partido redondeado a entero (p.ej. 2.6 -> "3") deja de decir nada.
+const fmtProm = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 // timeZone: "UTC" es obligatorio acá: si no, Intl formatea en el huso horario
 // local del navegador y una fecha parseada como medianoche UTC puede mostrar
 // el día anterior (p.ej. Argentina, UTC-3).
@@ -33,6 +39,9 @@ function fmt(valor) {
 }
 function fmtPorcentaje(valor) {
   return valor === null || valor === undefined ? "–" : fmtPct.format(valor);
+}
+function fmtPromedio(valor) {
+  return valor === null || valor === undefined ? "–" : fmtProm.format(valor);
 }
 function fmtFechaISO(iso) {
   // Date(iso) en UTC para que no corra un día según el huso horario del navegador
@@ -59,7 +68,10 @@ const estado = {
   data: null,
   filtros: {},
   vista: "resumen",
-  orden: { jugadores: { columna: "g", direccion: "desc" } },
+  orden: {
+    jugadores: { columna: "g", direccion: "desc" },
+    rivales: { columna: "pj", direccion: "desc" },
+  },
   jugadorFichaId: null,
 };
 
@@ -85,6 +97,7 @@ async function init() {
 
   leerFiltrosDeURL();
   construirControlesFiltro();
+  cerrarDropdownsFiltroAlClickAfuera();
   construirTabs();
   construirBotonCompartir();
   construirToggleTema();
@@ -240,7 +253,7 @@ function construirControlesFiltro() {
     </div>
     <div class="filtro-campo">
       <span class="filtro-etiqueta" id="f-rivales-label">Rival</span>
-      <details class="filtro-dropdown">
+      <details class="filtro-dropdown" name="filtro-dropdown">
         <summary aria-labelledby="f-rivales-label"><span id="f-rivales-resumen">Todos</span></summary>
         <div class="filtro-dropdown-panel">
           <input type="text" id="f-rivales-buscar" placeholder="Buscar rival…" aria-label="Buscar rival" class="input-busqueda" />
@@ -250,7 +263,7 @@ function construirControlesFiltro() {
     </div>
     <div class="filtro-campo">
       <span class="filtro-etiqueta" id="f-resultado-label">Resultado</span>
-      <details class="filtro-dropdown">
+      <details class="filtro-dropdown" name="filtro-dropdown">
         <summary aria-labelledby="f-resultado-label"><span id="f-resultado-resumen">Todos</span></summary>
         <div class="filtro-dropdown-panel">
           <div class="filtro-chips-lista" role="group" aria-label="Resultado" id="f-resultado">
@@ -342,6 +355,18 @@ function construirControlesFiltro() {
     estado.filtros = {};
     construirControlesFiltro();
     onFiltrosCambiaron();
+  });
+}
+
+// <details> nativo solo se cierra haciendo click en el <summary>; esto suma
+// el comportamiento habitual de un dropdown: click afuera también cierra.
+// Delegado en document (una sola vez) porque los <details> se recrean cada
+// vez que se reconstruyen los controles de filtro.
+function cerrarDropdownsFiltroAlClickAfuera() {
+  document.addEventListener("click", (e) => {
+    for (const details of document.querySelectorAll(".filtro-dropdown[open]")) {
+      if (!details.contains(e.target)) details.open = false;
+    }
   });
 }
 
@@ -465,14 +490,53 @@ function renderResumen(cont, ids) {
     ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]])}
     ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
     ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
+    ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
     <p>${puntosForma(forma)} Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
+    ${renderRachasHistoricas(ids)}
     ${renderJugadoresDestacados(ids)}
+    ${renderDatosCuriosos(ids)}
     ${tarjetaUltimo}
   `;
   activarScrollASecciones(cont);
   for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
+}
+
+// rachas históricas (no solo la actual): la más larga ganando/perdiendo y la
+// más larga sin ganar / sin perder (invicto), cada una con su rango de
+// fechas. Pedido de la usuaria además de la racha actual.
+function renderRachasHistoricas(ids) {
+  const r = rachasHistoricas(estado.data, ids);
+  const items = [
+    ["Racha ganadora más larga", r.ganando],
+    ["Racha perdedora más larga", r.perdiendo],
+    ["Más partidos seguidos sin ganar", r.sinGanar],
+    ["Más partidos seguidos sin perder", r.sinPerder],
+  ];
+  if (items.every(([, racha]) => !racha)) return "";
+  return `
+    <h2>Rachas</h2>
+    <div class="destacados-grid">
+      ${items.map(([etiqueta, racha]) => tarjetaRacha(etiqueta, racha)).join("")}
+    </div>
+  `;
+}
+
+function tarjetaRacha(etiqueta, racha) {
+  if (!racha) {
+    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
+  }
+  const rango = racha.desde === racha.hasta
+    ? fmtFechaISO(racha.desde)
+    : `${fmtFechaISO(racha.desde)} – ${fmtFechaISO(racha.hasta)}`;
+  return `
+    <div class="tarjeta-destacado">
+      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
+      <span class="tarjeta-destacado-valor">${racha.cantidad}</span>
+      <span class="tarjeta-destacado-etiqueta">${rango}</span>
+    </div>
+  `;
 }
 
 // "Resumen" tiene que ser un resumen de verdad: no solo números del equipo,
@@ -504,6 +568,91 @@ function tarjetaDestacado(etiqueta, v, unidad) {
       <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
       <span class="tarjeta-destacado-jugador">${avatarHTML(v.nombre)}${v.nombre}</span>
       <span class="tarjeta-destacado-valor">${v.valor} ${unidad}</span>
+    </button>
+  `;
+}
+
+// "Datos curiosos": coincidencias que salen de cruzar los datos entre sí
+// (rival más repetido, marcador que se dio más de una vez, etc.), no solo
+// sumar columnas. Pedido de la usuaria. Cada hecho se arma solo si aplica
+// (ver datosCuriosos() en stats.js) — con pocos partidos cargados es normal
+// que algunas tarjetas no aparezcan todavía.
+function renderDatosCuriosos(ids) {
+  const d = datosCuriosos(estado.data, ids);
+  const tarjetas = [];
+
+  if (d.rivalRepetido) {
+    const r = d.rivalRepetido;
+    const record = [r.g && `${r.g}G`, r.e && `${r.e}E`, r.p && `${r.p}P`].filter(Boolean).join("-");
+    tarjetas.push(tarjetaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
+  }
+  if (d.marcadorRepetido) {
+    const m = d.marcadorRepetido;
+    tarjetas.push(tarjetaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
+  }
+  if (d.jugadorAmuleto) {
+    const j = d.jugadorAmuleto;
+    tarjetas.push(tarjetaCuriosidadJugador(
+      "Jugador amuleto",
+      j,
+      `${fmtPorcentaje(j.pctVictorias)} de victorias del equipo en sus ${j.pj} PJ`,
+    ));
+  }
+  if (d.masGolesUnPartido) {
+    const m = d.masGolesUnPartido;
+    tarjetas.push(tarjetaCuriosidadJugador(
+      "Más goles en un solo partido",
+      m,
+      `${m.cantidad} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`,
+    ));
+  }
+  if (d.vallaInvicta) {
+    const v = d.vallaInvicta;
+    tarjetas.push(tarjetaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`));
+  }
+  if (d.partidoMasDesparejo) {
+    const p = d.partidoMasDesparejo;
+    tarjetas.push(tarjetaCuriosidad(
+      p.aFavor ? "Goleada más contundente" : "Peor derrota",
+      `${p.gf}-${p.gc}`,
+      `${fmtFechaISO(p.fecha)} vs ${p.rival}`,
+    ));
+  }
+
+  if (tarjetas.length === 0) return "";
+  return `
+    <h2>Datos curiosos</h2>
+    <div class="destacados-grid">
+      ${tarjetas.join("")}
+    </div>
+  `;
+}
+
+function listaConY(items) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
+}
+
+// hecho sin jugador asociado (rival, marcador, partido): mismo layout de
+// tarjetaRacha (etiqueta / valor grande / detalle).
+function tarjetaCuriosidad(etiqueta, valor, detalle) {
+  return `
+    <div class="tarjeta-destacado">
+      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
+      <span class="tarjeta-destacado-valor">${valor}</span>
+      <span class="tarjeta-destacado-etiqueta">${detalle}</span>
+    </div>
+  `;
+}
+
+// hecho protagonizado por un jugador: mismo layout que tarjetaDestacado
+// (clickeable -> va a su ficha), con el detalle de la coincidencia abajo.
+function tarjetaCuriosidadJugador(etiqueta, jugador, detalle) {
+  return `
+    <button type="button" class="tarjeta-destacado" data-jugador-id="${jugador.idJugador}">
+      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
+      <span class="tarjeta-destacado-jugador">${avatarHTML(jugador.nombre)}${jugador.nombre}</span>
+      <span class="tarjeta-destacado-valor">${detalle}</span>
     </button>
   `;
 }
@@ -566,14 +715,34 @@ const COLUMNAS_JUGADORES = [
   { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt },
 ];
 
-// ---------------- vista Equipo: Partidos + Gráficos del equipo ----------------
+const COLUMNAS_RIVALES = [
+  { clave: "rival", etiqueta: "Rival" },
+  { clave: "pj", etiqueta: "PJ" },
+  { clave: "g", etiqueta: "G" },
+  { clave: "e", etiqueta: "E" },
+  { clave: "p", etiqueta: "P" },
+  { clave: "gf", etiqueta: "GF" },
+  { clave: "gc", etiqueta: "GC" },
+  { clave: "dif", etiqueta: "Dif" },
+  { clave: "pctVictorias", etiqueta: "% victorias" },
+];
+
+// ---------------- vista Equipo: Partidos + Historial vs rivales + Gráficos ----------------
 
 function renderEquipo(cont, ids) {
   cont.innerHTML = `
-    ${renderSubnav([["seccion-partidos", "Partidos"], ["seccion-graficos-equipo", "Goles"]])}
+    ${renderSubnav([
+      ["seccion-partidos", "Partidos"],
+      ["seccion-historial-rivales", "Historial"],
+      ["seccion-graficos-equipo", "Goles"],
+    ])}
     <section id="seccion-partidos">
       <h2>Partidos</h2>
       <div id="partidos-contenido"></div>
+    </section>
+    <section id="seccion-historial-rivales">
+      <h2>Historial vs rivales</h2>
+      <div id="historial-rivales-contenido"></div>
     </section>
     <section id="seccion-graficos-equipo">
       <h2>Goles</h2>
@@ -582,7 +751,51 @@ function renderEquipo(cont, ids) {
   `;
   activarScrollASecciones(cont);
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
+  renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
   renderGraficosEquipoContenido(cont.querySelector("#graficos-equipo-contenido"), ids);
+}
+
+// una fila por rival enfrentado, no solo el más repetido (eso ya lo cubre
+// "Rival más enfrentado" en Datos curiosos). Pedido de la usuaria.
+function renderHistorialRivalesContenido(cont, ids) {
+  let filas = historialRivales(estado.data, ids);
+  const orden = estado.orden.rivales;
+  filas = ordenarFilas(filas, orden);
+
+  if (filas.length === 0) {
+    cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
+    return;
+  }
+
+  cont.innerHTML = `
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr>${COLUMNAS_RIVALES.map((c) => thOrdenable(c, orden)).join("")}</tr></thead>
+        <tbody>
+          ${filas.map((f) => `
+            <tr>
+              <td>${f.rival}</td>
+              <td>${f.pj}</td><td>${f.g}</td><td>${f.e}</td><td>${f.p}</td>
+              <td>${f.gf}</td><td>${f.gc}</td><td>${f.dif}</td>
+              <td>${fmtPorcentaje(f.pctVictorias)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  for (const th of cont.querySelectorAll("th[data-clave]")) {
+    th.addEventListener("click", () => {
+      const clave = th.dataset.clave;
+      if (orden.columna === clave) orden.direccion = orden.direccion === "desc" ? "asc" : "desc";
+      else {
+        orden.columna = clave;
+        orden.direccion = "desc";
+      }
+      renderHistorialRivalesContenido(cont, ids);
+    });
+  }
 }
 
 function renderPartidosContenido(cont, ids) {
