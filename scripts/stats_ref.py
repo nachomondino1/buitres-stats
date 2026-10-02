@@ -56,6 +56,8 @@ def resumen_equipo(data, ids):
         "pj": pj, "g": g, "e": e, "p": p, "gf": gf, "gc": gc,
         "dif": gf - gc,
         "pctVictorias": (g / pj) if pj else None,
+        "promedioGf": (gf / pj) if pj else None,
+        "promedioGc": (gc / pj) if pj else None,
         "racha": racha,
     }
 
