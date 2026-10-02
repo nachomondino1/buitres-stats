@@ -24,8 +24,8 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
 **UX / funcionalidad**
 - ~~Botón "compartir"~~ ✅ hecho: botón en el header, `navigator.share` (panel nativo
   del celular) con fallback a copiar el link al portapapeles en desktop.
-- Recordar la columna de orden de la tabla de jugadores en la URL (hoy el filtro se
-  guarda pero el orden de columna no).
+- ~~Recordar la columna de orden de la tabla de jugadores en la URL~~ ✅ hecho:
+  `ordenCol`/`ordenDir`, mismo patrón que el resto de los filtros.
 - Comparador de 2 jugadores lado a lado.
 - Gráfico de evolución de % de victorias / racha a lo largo del tiempo (no solo el
   snapshot actual de "racha actual").

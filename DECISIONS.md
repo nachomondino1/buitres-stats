@@ -2,6 +2,15 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Orden de la tabla de jugadores en la URL (quinto ítem del backlog, impacto/esfuerzo)
+
+Era el que quedaba más barato del backlog: mismo patrón que ya existía para
+tipo/rivales/resultados/últimos (`leerFiltrosDeURL`/`actualizarURL`), solo que
+`orden.jugadores` vive aparte de `estado.filtros` (no es un filtro, es una preferencia
+de visualización) así que no se toca con "Limpiar filtros" ni se pierde al cambiar de
+pestaña. Se omite de la URL cuando está en el default (`g` desc) para no ensuciarla
+con el caso más común.
+
 ## Nueva columna "PJ c/ G+A" (pedido de la usuaria) + bug de caché de la PWA
 
 La usuaria pidió, en la tabla de jugadores, en cuántos partidos distintos metió cada

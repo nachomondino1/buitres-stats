@@ -121,6 +121,12 @@ function leerFiltrosDeURL() {
   estado.filtros = filtros;
   if (params.has("vista") && VISTAS.includes(params.get("vista"))) estado.vista = params.get("vista");
   if (params.has("jugadorId")) estado.jugadorFichaId = params.get("jugadorId");
+  if (params.has("ordenCol") && COLUMNAS_JUGADORES.some((c) => c.clave === params.get("ordenCol"))) {
+    estado.orden.jugadores = {
+      columna: params.get("ordenCol"),
+      direccion: params.get("ordenDir") === "asc" ? "asc" : "desc",
+    };
+  }
 }
 
 function actualizarURL() {
@@ -132,6 +138,11 @@ function actualizarURL() {
   if (f.ultimos != null) params.set("ultimos", String(f.ultimos));
   if (estado.vista !== "resumen") params.set("vista", estado.vista);
   if (estado.jugadorFichaId) params.set("jugadorId", estado.jugadorFichaId);
+  const orden = estado.orden.jugadores;
+  if (orden && (orden.columna !== "g" || orden.direccion !== "desc")) {
+    params.set("ordenCol", orden.columna);
+    params.set("ordenDir", orden.direccion);
+  }
   const query = params.toString();
   const url = query ? `?${query}` : window.location.pathname;
   history.replaceState(null, "", url);
@@ -427,6 +438,7 @@ function renderJugadores(cont, ids) {
         orden.columna = clave;
         orden.direccion = "desc";
       }
+      actualizarURL();
       renderVistaActual();
     });
   }
