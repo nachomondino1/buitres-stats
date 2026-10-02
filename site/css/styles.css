@@ -127,6 +127,21 @@ header.app-header h1 {
   font-size: 1.3rem;
 }
 
+.boton-titulo {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.boton-titulo:hover {
+  color: var(--color-acento);
+}
+
 .app-header-fila {
   display: flex;
   align-items: center;
@@ -195,7 +210,8 @@ header.app-header p {
   border-bottom: 1px solid var(--color-borde);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 1.5rem;
   /* reserva el alto aprox. de los controles ya poblados: sin esto, .filtros y
      nav.tabs arrancan casi vacíos y "empujan" todo lo de abajo de golpe
      cuando se construyen (el mayor causante de Cumulative Layout Shift medido
@@ -356,11 +372,28 @@ button.boton-limpiar {
 
 nav.tabs {
   display: flex;
+  justify-content: center;
   overflow-x: auto;
   background: var(--color-bg-elevado);
   border-bottom: 1px solid var(--color-borde);
   -webkit-overflow-scrolling: touch;
   min-height: 2.9rem;
+}
+
+/* en desktop (en mobile ya va fija abajo, ver media query de 600px) clavada
+   arriba al scrollear: Equipo y Jugadores quedaron páginas largas con varias
+   secciones, tener el nav siempre a mano evita volver arriba a mano para
+   cambiar de vista. scroll-margin-top en las secciones es para que el
+   scroll-to-section (subnav, tocar un jugador) no quede tapado por la barra. */
+@media (min-width: 601px) {
+  nav.tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  main section[id] {
+    scroll-margin-top: 2.9rem;
+  }
 }
 
 nav.tabs button {
@@ -489,6 +522,61 @@ main {
   font-size: 0.75rem;
 }
 
+/* ---------- jugadores destacados (Resumen) ---------- */
+
+.destacados-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: var(--espacio);
+}
+
+.tarjeta-destacado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0.7rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.tarjeta-destacado:hover {
+  border-color: var(--color-acento);
+}
+
+.tarjeta-destacado-etiqueta {
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+.tarjeta-destacado-jugador {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.tarjeta-destacado-valor {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-acento);
+}
+
+.tarjeta-destacado-vacia {
+  cursor: default;
+  color: var(--color-texto-tenue);
+}
+
+.tarjeta-destacado-vacia:hover {
+  border-color: var(--color-borde);
+}
+
 /* G/E/P: mismos colores que ya se usan para marcar resultado en Partidos/Ficha
    (.resultado-G/E/P), para que el ojo conecte "verde = ganado" en todos lados. */
 .tarjeta-g {
@@ -528,7 +616,7 @@ table {
 th,
 td {
   padding: 0.5rem 0.6rem;
-  text-align: right;
+  text-align: center;
   white-space: nowrap;
   border-bottom: 1px solid var(--color-borde);
 }
@@ -700,19 +788,36 @@ footer.app-footer {
   flex: none;
 }
 
-.boton-volver {
-  display: inline-block;
+/* fila de atajos arriba de una vista con varias secciones (Equipo,
+   Jugadores) — las vistas se alargaron al agrupar lo que antes eran
+   pestañas separadas, así que ayuda tener cómo saltar directo. */
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   margin-bottom: var(--espacio);
-  border: none;
-  background: none;
-  color: var(--color-texto-tenue);
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0;
 }
 
-.boton-volver:hover {
+.subnav button {
+  border: 1px solid var(--color-borde);
+  background: var(--color-bg-elevado);
+  color: var(--color-texto);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.subnav button:hover {
+  border-color: var(--color-acento);
   color: var(--color-acento);
+}
+
+/* separador visual entre secciones apiladas dentro de una misma vista */
+main section + section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-borde);
 }
 
 .ficha-encabezado {

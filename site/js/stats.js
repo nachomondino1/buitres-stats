@@ -193,6 +193,27 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
   return filas;
 }
 
+/** Jugadores destacados del set filtrado (vista Resumen): máximo goleador,
+ * máximo asistidor, más influyente (G+A) y el que más partidos jugó. Un
+ * jugador en 0 en la métrica correspondiente no cuenta como "destacado" (no
+ * tiene sentido resaltar a alguien con 0 goles como "máximo goleador" solo
+ * porque nadie más metió ninguno) -> null en ese caso. */
+export function jugadoresDestacados(data, idsPartidos) {
+  const filas = tablaJugadores(data, idsPartidos);
+
+  function maximo(clave) {
+    const mejor = filas.reduce((m, f) => (f[clave] > (m?.[clave] ?? -1) ? f : m), null);
+    return mejor && mejor[clave] > 0 ? { nombre: mejor.nombre_mostrar, idJugador: mejor.id_jugador, valor: mejor[clave] } : null;
+  }
+
+  return {
+    goleador: maximo("g"),
+    asistidor: maximo("a"),
+    influyente: maximo("ga"),
+    masPartidos: maximo("pj"),
+  };
+}
+
 /** Partidos del set filtrado con su alineación y goles ya resueltos, para la
  * vista "Partidos" (lista + detalle al expandir). */
 export function partidosConDetalle(data, idsPartidos) {
