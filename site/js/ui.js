@@ -75,14 +75,17 @@ const estado = {
   jugadorFichaId: null,
 };
 
-// 3 vistas, cada una con varias secciones adentro (pedido de la usuaria: menos
-// pestañas, agrupadas por tema, en vez de una pestaña por tabla/gráfico).
-const VISTAS = ["resumen", "equipo", "jugadores"];
+// 4 vistas. "Partidos" se separó de "Equipo": es el log de partidos en sí
+// (resultado + alineación + goles), ni una agregación de equipo ni de
+// jugador, así que no encajaba del todo en ninguna de las otras dos (pedido
+// de la usuaria).
+const VISTAS = ["resumen", "partidos", "equipo", "jugadores"];
 
-// vistas viejas (de antes de agrupar en 3) que puede traer un link guardado:
-// las mandamos a la vista nueva que más se le parece, en vez de resetear a
-// Resumen en silencio.
-const VISTA_LEGADO = { partidos: "equipo", graficos: "equipo", ficha: "jugadores", duos: "jugadores" };
+// vistas viejas (de antes de agrupar en pocas pestañas) que puede traer un
+// link guardado: las mandamos a la vista nueva que más se le parece, en vez
+// de resetear a Resumen en silencio. "partidos" ya no está acá: ahora es una
+// vista real con ese mismo nombre, así que el link viejo cae directo ahí.
+const VISTA_LEGADO = { graficos: "equipo", ficha: "jugadores", duos: "jugadores" };
 
 async function init() {
   const main = document.querySelector("main");
@@ -408,6 +411,7 @@ function actualizarBotonesUltimos(cont) {
 
 const ETIQUETA_VISTA = {
   resumen: "Resumen",
+  partidos: "Partidos",
   equipo: "Equipo",
   jugadores: "Jugadores",
 };
@@ -439,7 +443,7 @@ function renderVistaActual() {
   const main = document.querySelector("main");
   const ids = idsFiltrados();
 
-  const renderers = { resumen: renderResumen, equipo: renderEquipo, jugadores: renderJugadores };
+  const renderers = { resumen: renderResumen, partidos: renderPartidosVista, equipo: renderEquipo, jugadores: renderJugadores };
   main.innerHTML = `<section role="tabpanel" id="panel-${estado.vista}" aria-labelledby="tab-${estado.vista}"></section>`;
   renderers[estado.vista](main.querySelector("section"), ids);
 }
@@ -477,9 +481,18 @@ function irAFichaJugador(idJugador) {
   document.getElementById("seccion-ficha")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// desde la tarjeta mini de "Último partido" en Resumen: va a la vista
+// Partidos (ahí arriba tiene la versión completa, con goleadores/asistidores).
+function irAPartidos() {
+  estado.vista = "partidos";
+  actualizarURL();
+  renderVistaActual();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function renderResumen(cont, ids) {
   const r = resumenEquipo(estado.data, ids);
-  const tarjetaUltimo = renderTarjetaUltimoPartido();
+  const tarjetaUltimo = renderTarjetaUltimoPartidoMini();
   if (r.pj === 0) {
     cont.innerHTML = `<p class="estado-vacio">No hay partidos para estos filtros.</p>${tarjetaUltimo}`;
     return;
@@ -487,12 +500,12 @@ function renderResumen(cont, ids) {
   const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
     <h2>Resultados</h2>
-    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]])}
+    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-grid-hero")}
     ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
     ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
     ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
-    <p>${puntosForma(forma)} Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
-    ${renderRachasHistoricas(ids)}
+    <p class="resumen-forma">Últimos partidos: ${puntosForma(forma)}</p>
+    ${renderRachasHistoricas(ids, r.racha)}
     ${renderJugadoresDestacados(ids)}
     ${renderDatosCuriosos(ids)}
     ${tarjetaUltimo}
@@ -501,29 +514,48 @@ function renderResumen(cont, ids) {
   for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
+  cont.querySelector("[data-ir-partidos]")?.addEventListener("click", irAPartidos);
 }
 
-// rachas históricas (no solo la actual): la más larga ganando/perdiendo y la
-// más larga sin ganar / sin perder (invicto), cada una con su rango de
-// fechas. Pedido de la usuaria además de la racha actual.
-function renderRachasHistoricas(ids) {
+// rachas: la actual (pedido de la usuaria: vivía suelta arriba, ahora es una
+// tarjeta más acá) + las históricas (la más larga ganando/perdiendo y la más
+// larga sin ganar / sin perder), cada una con su rango de fechas.
+function renderRachasHistoricas(ids, rachaActual) {
   const r = rachasHistoricas(estado.data, ids);
   const items = [
-    ["Racha ganadora más larga", r.ganando],
-    ["Racha perdedora más larga", r.perdiendo],
-    ["Más partidos seguidos sin ganar", r.sinGanar],
-    ["Más partidos seguidos sin perder", r.sinPerder],
+    ["Racha ganadora más larga", r.ganando, "bueno"],
+    ["Racha perdedora más larga", r.perdiendo, "malo"],
+    ["Más partidos seguidos sin ganar", r.sinGanar, "malo"],
+    ["Más partidos seguidos sin perder", r.sinPerder, "bueno"],
   ];
-  if (items.every(([, racha]) => !racha)) return "";
+  if (!rachaActual && items.every(([, racha]) => !racha)) return "";
   return `
     <h2>Rachas</h2>
     <div class="destacados-grid">
-      ${items.map(([etiqueta, racha]) => tarjetaRacha(etiqueta, racha)).join("")}
+      ${tarjetaRachaActual(rachaActual)}
+      ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
     </div>
   `;
 }
 
-function tarjetaRacha(etiqueta, racha) {
+// G/E/P: mismo color que el resto de la app usa para ese resultado (ver
+// .tarjeta-g/-e/-p), no siempre verde — el verde es "bueno", no "el dato
+// importante" (pedido de la usuaria).
+function tarjetaRachaActual(racha) {
+  if (!racha) {
+    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">Racha actual</span><span class="tarjeta-destacado-valor">–</span></div>`;
+  }
+  const tono = { G: "bueno", E: "empate", P: "malo" }[racha.resultado];
+  return `
+    <div class="tarjeta-destacado">
+      <span class="tarjeta-destacado-etiqueta">Racha actual</span>
+      <span class="tarjeta-destacado-valor valor-${tono}">${racha.cantidad}</span>
+      <span class="tarjeta-destacado-etiqueta">${etiquetaRacha(racha.resultado)}</span>
+    </div>
+  `;
+}
+
+function tarjetaRacha(etiqueta, racha, tono) {
   if (!racha) {
     return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
   }
@@ -533,7 +565,7 @@ function tarjetaRacha(etiqueta, racha) {
   return `
     <div class="tarjeta-destacado">
       <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-valor">${racha.cantidad}</span>
+      <span class="tarjeta-destacado-valor valor-${tono}">${racha.cantidad}</span>
       <span class="tarjeta-destacado-etiqueta">${rango}</span>
     </div>
   `;
@@ -608,7 +640,7 @@ function renderDatosCuriosos(ids) {
   }
   if (d.vallaInvicta) {
     const v = d.vallaInvicta;
-    tarjetas.push(tarjetaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`));
+    tarjetas.push(tarjetaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
   }
   if (d.partidoMasDesparejo) {
     const p = d.partidoMasDesparejo;
@@ -616,6 +648,7 @@ function renderDatosCuriosos(ids) {
       p.aFavor ? "Goleada más contundente" : "Peor derrota",
       `${p.gf}-${p.gc}`,
       `${fmtFechaISO(p.fecha)} vs ${p.rival}`,
+      p.aFavor ? "bueno" : "malo",
     ));
   }
 
@@ -634,12 +667,15 @@ function listaConY(items) {
 }
 
 // hecho sin jugador asociado (rival, marcador, partido): mismo layout de
-// tarjetaRacha (etiqueta / valor grande / detalle).
-function tarjetaCuriosidad(etiqueta, valor, detalle) {
+// tarjetaRacha (etiqueta / valor grande / detalle). `tono` es opcional: solo
+// los hechos claramente buenos/malos lo usan (el resto queda neutro, ver
+// comentario arriba de .tarjeta-destacado-valor en el CSS).
+function tarjetaCuriosidad(etiqueta, valor, detalle, tono) {
+  const claseTono = tono ? ` valor-${tono}` : "";
   return `
     <div class="tarjeta-destacado">
       <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-valor">${valor}</span>
+      <span class="tarjeta-destacado-valor${claseTono}">${valor}</span>
       <span class="tarjeta-destacado-etiqueta">${detalle}</span>
     </div>
   `;
@@ -660,9 +696,9 @@ function tarjetaCuriosidadJugador(etiqueta, jugador, detalle) {
 // una fila = un grupo semántico (resultado, goles, etc.) en su propia grilla,
 // para separarlos visualmente en vez de una sola grilla con las 8 tarjetas
 // mezcladas.
-function filaTarjetas(items) {
+function filaTarjetas(items, claseFila = "") {
   const tarjetas = items.map(([et, val, clase = ""]) => miniTarjeta(et, val, clase)).join("");
-  return `<div class="resumen-grid">${tarjetas}</div>`;
+  return `<div class="resumen-grid ${claseFila}">${tarjetas}</div>`;
 }
 
 function miniTarjeta(etiqueta, valor, clase) {
@@ -679,9 +715,10 @@ function puntosForma(resultados) {
   return `<span class="forma-puntos" aria-hidden="true">${puntos}</span>`;
 }
 
-// tarjeta "último partido": siempre el real más reciente, sin importar los
-// filtros activos (ver comentario de ultimoPartido() en stats.js) — es la
-// primera pregunta al abrir la página después de jugar un sábado.
+// tarjeta "último partido" completa (goleadores/asistidores incluidos):
+// siempre el real más reciente, sin importar los filtros activos (ver
+// comentario de ultimoPartido() en stats.js). Vive arriba de todo en la
+// vista Partidos.
 function renderTarjetaUltimoPartido() {
   const u = ultimoPartido(estado.data);
   if (!u) return "";
@@ -697,6 +734,25 @@ function renderTarjetaUltimoPartido() {
       <div class="tarjeta-ultimo-marcador">Los Buitres ${u.gf} – ${u.gc} ${u.rival}</div>
       ${golesTexto(u.goleadores, "⚽")}
       ${golesTexto(u.asistidores, "🅰️")}
+    </div>
+  `;
+}
+
+// versión mini para Resumen: solo el resultado, sin goleadores/alineación
+// (eso ahora vive en la vista Partidos) — pedido de la usuaria, para no
+// duplicar el detalle completo en dos lados.
+function renderTarjetaUltimoPartidoMini() {
+  const u = ultimoPartido(estado.data);
+  if (!u) return "";
+  return `
+    <h2>Último partido</h2>
+    <div class="tarjeta-ultimo">
+      <div class="tarjeta-ultimo-header">
+        <span>${fmtFechaISO(u.fecha)} · ${u.tipo} vs ${u.rival}</span>
+        <span class="resultado resultado-${u.resultado}">${u.resultado}</span>
+      </div>
+      <div class="tarjeta-ultimo-marcador">Los Buitres ${u.gf} – ${u.gc} ${u.rival}</div>
+      <button type="button" class="tarjeta-ultimo-link" data-ir-partidos>Ver todos los partidos →</button>
     </div>
   `;
 }
@@ -727,19 +783,14 @@ const COLUMNAS_RIVALES = [
   { clave: "pctVictorias", etiqueta: "% victorias" },
 ];
 
-// ---------------- vista Equipo: Partidos + Historial vs rivales + Gráficos ----------------
+// ---------------- vista Equipo: Historial vs rivales + Gráficos ----------------
 
 function renderEquipo(cont, ids) {
   cont.innerHTML = `
     ${renderSubnav([
-      ["seccion-partidos", "Partidos"],
       ["seccion-historial-rivales", "Historial"],
       ["seccion-graficos-equipo", "Goles"],
     ])}
-    <section id="seccion-partidos">
-      <h2>Partidos</h2>
-      <div id="partidos-contenido"></div>
-    </section>
     <section id="seccion-historial-rivales">
       <h2>Historial vs rivales</h2>
       <div id="historial-rivales-contenido"></div>
@@ -750,9 +801,23 @@ function renderEquipo(cont, ids) {
     </section>
   `;
   activarScrollASecciones(cont);
-  renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
   renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
   renderGraficosEquipoContenido(cont.querySelector("#graficos-equipo-contenido"), ids);
+}
+
+// ---------------- vista Partidos: último partido (completo) + listado ----------------
+// Se separó de Equipo: el log de partidos (resultado + alineación + goles)
+// no es una agregación de equipo ni de jugador, es su propia cosa (pedido de
+// la usuaria). Sin subnav: es una sola sección, no hace falta saltar entre
+// varias.
+
+function renderPartidosVista(cont, ids) {
+  cont.innerHTML = `
+    ${renderTarjetaUltimoPartido()}
+    <h2>Partidos</h2>
+    <div id="partidos-contenido"></div>
+  `;
+  renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
 }
 
 // una fila por rival enfrentado, no solo el más repetido (eso ya lo cubre

@@ -21,32 +21,36 @@
    que "forzar claro" le siga ganando al sistema en dark mode. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: #15181a;
-    --color-bg-elevado: #1f2327;
-    --color-texto: #eaeaea;
-    --color-texto-tenue: #a8a8a8;
-    --color-borde: #33383d;
-    --color-acento: #3fa06c;
+    /* paleta "slate", no gris neutro: todo con un dejo azulado, y la
+       superficie de las tarjetas (--color-bg-elevado) bastante más clara que
+       el fondo de página en vez de casi igual, para que las tarjetas se
+       despeguen en vez de que todo se vea como una sola masa negra. */
+    --color-bg: #191d24;
+    --color-bg-elevado: #262c37;
+    --color-texto: #eef1f4;
+    --color-texto-tenue: #9aa4b0;
+    --color-borde: #3a4150;
+    --color-acento: #4cb37c;
     --color-acento-texto: #0d1410;
-    --color-ganado: #3fa06c;
-    --color-empatado: #d9ae3e;
-    --color-perdido: #e06565;
+    --color-ganado: #4cb37c;
+    --color-empatado: #e0b94a;
+    --color-perdido: #e8707a;
     --color-aviso-bg: #3a2f17;
     --color-aviso-borde: #8a6a24;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #15181a;
-  --color-bg-elevado: #1f2327;
-  --color-texto: #eaeaea;
-  --color-texto-tenue: #a8a8a8;
-  --color-borde: #33383d;
-  --color-acento: #3fa06c;
+  --color-bg: #191d24;
+  --color-bg-elevado: #262c37;
+  --color-texto: #eef1f4;
+  --color-texto-tenue: #9aa4b0;
+  --color-borde: #3a4150;
+  --color-acento: #4cb37c;
   --color-acento-texto: #0d1410;
-  --color-ganado: #3fa06c;
-  --color-empatado: #d9ae3e;
-  --color-perdido: #e06565;
+  --color-ganado: #4cb37c;
+  --color-empatado: #e0b94a;
+  --color-perdido: #e8707a;
   --color-aviso-bg: #3a2f17;
   --color-aviso-borde: #8a6a24;
 }
@@ -458,15 +462,34 @@ main {
 }
 
 .tarjeta-ultimo-marcador {
-  font-size: 1.15rem;
+  font-size: 1.6rem;
   font-weight: 700;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
 }
 
 .tarjeta-ultimo-detalle {
   margin: 0.15rem 0;
   font-size: 0.85rem;
   color: var(--color-texto-tenue);
+}
+
+/* tarjeta mini en Resumen: link a la vista Partidos (ahí vive la versión
+   completa, con goleadores/alineación). */
+.tarjeta-ultimo-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-acento);
+  cursor: pointer;
+}
+
+.tarjeta-ultimo-link:hover {
+  text-decoration: underline;
 }
 
 /* ---------- racha en puntitos ---------- */
@@ -516,7 +539,14 @@ main {
 .resumen-tarjeta .valor {
   font-weight: 700;
   display: block;
-  font-size: 1.4rem;
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+
+/* fila "hero" (PJ / % victorias): el número que más importa de toda la
+   página, bien grande, tipo titular — pedido de la usuaria. */
+.resumen-grid-hero .resumen-tarjeta .valor {
+  font-size: 3rem;
 }
 
 .resumen-tarjeta .etiqueta {
@@ -564,10 +594,26 @@ main {
   font-weight: 600;
 }
 
+/* neutro por default (ni bueno ni malo: un récord, un rival, una fecha...).
+   El verde/rojo se reservan para cuando el dato en sí es una buena o mala
+   noticia (.valor-bueno/.valor-malo más abajo) — pedido de la usuaria, antes
+   todo era verde sin importar el significado. */
 .tarjeta-destacado-valor {
-  font-size: 1.1rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: var(--color-acento);
+  color: var(--color-texto);
+}
+
+.tarjeta-destacado-valor.valor-bueno {
+  color: var(--color-ganado);
+}
+
+.tarjeta-destacado-valor.valor-malo {
+  color: var(--color-perdido);
+}
+
+.tarjeta-destacado-valor.valor-empate {
+  color: var(--color-empatado);
 }
 
 .tarjeta-destacado-vacia {
