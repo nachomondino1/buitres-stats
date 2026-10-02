@@ -9,8 +9,9 @@ import {
   golesPorTiempo,
   partidosConDetalle,
   resumenEquipo,
-  resumenPorTipo,
   tablaJugadores,
+  ultimoPartido,
+  ultimosResultados,
 } from "./stats.js";
 import { dibujarEvolucion, dibujarRanking, dibujarFuenteGoles, dibujarGolesPorTiempo } from "./charts.js";
 
@@ -33,6 +34,21 @@ function fmtPorcentaje(valor) {
 function fmtFechaISO(iso) {
   // Date(iso) en UTC para que no corra un día según el huso horario del navegador
   return fmtFecha.format(new Date(`${iso}T00:00:00Z`));
+}
+
+// avatar ≈ iniciales + color determinístico por nombre (hash simple -> hue),
+// para darle identidad visual a cada jugador en las tablas sin depender de
+// fotos reales (la foto grupal que se probó en el header no le gustó a la
+// usuaria, ver DECISIONS.md).
+function colorDesdeNombre(nombre) {
+  let hash = 0;
+  for (let i = 0; i < nombre.length; i++) hash = (hash * 31 + nombre.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360}, 55%, 42%)`;
+}
+
+function avatarHTML(nombre) {
+  const inicial = nombre.trim().charAt(0).toUpperCase();
+  return `<span class="avatar" style="background:${colorDesdeNombre(nombre)}" aria-hidden="true">${inicial}</span>`;
 }
 
 // estado ≈ un solo dict mutable; dict.setdefault-like defaults abajo en initFiltros()
@@ -63,9 +79,40 @@ async function init() {
   construirControlesFiltro();
   construirTabs();
   construirBotonCompartir();
+  construirToggleTema();
   renderFooter();
   renderVistaActual();
   registrarServiceWorker();
+}
+
+// el <html data-theme> ya se aplica antes de este módulo (script inline en
+// index.html, para que no haya flash del tema equivocado al cargar); acá solo
+// hace falta reflejar el ícono inicial y ciclar auto -> oscuro -> claro -> auto.
+function construirToggleTema() {
+  const boton = document.getElementById("boton-tema");
+  actualizarIconoTema(boton);
+  boton.addEventListener("click", () => {
+    const actual = document.documentElement.getAttribute("data-theme");
+    const siguiente = actual === "dark" ? "light" : actual === "light" ? null : "dark";
+    if (siguiente) document.documentElement.setAttribute("data-theme", siguiente);
+    else document.documentElement.removeAttribute("data-theme");
+    try {
+      if (siguiente) localStorage.setItem("tema", siguiente);
+      else localStorage.removeItem("tema");
+    } catch {
+      // localStorage puede no estar disponible (modo privado); no es crítico acá
+    }
+    actualizarIconoTema(boton);
+  });
+}
+
+function actualizarIconoTema(boton) {
+  const tema = document.documentElement.getAttribute("data-theme");
+  const porTema = { dark: ["☀️", "Pasar a modo claro"], light: ["🌙", "Pasar a modo oscuro (automático)"] };
+  const [icono, etiqueta] = porTema[tema] ?? ["🌓", "Forzar modo oscuro"];
+  boton.textContent = icono;
+  boton.setAttribute("aria-label", etiqueta);
+  boton.title = etiqueta;
 }
 
 function registrarServiceWorker() {
@@ -162,15 +209,16 @@ function construirControlesFiltro() {
 
   cont.innerHTML = `
     <div class="filtro-campo">
-      <label for="f-tipo">Tipo</label>
+      <label class="filtro-etiqueta" for="f-tipo">Tipo</label>
       <select id="f-tipo">
         <option value="">Todos</option>
         ${tipos.map((t) => `<option value="${t}">${t}</option>`).join("")}
       </select>
     </div>
     <div class="filtro-campo">
+      <span class="filtro-etiqueta" id="f-rivales-label">Rival</span>
       <details class="filtro-dropdown">
-        <summary>Rival<span class="filtro-dropdown-badge" id="f-rivales-badge" hidden></span></summary>
+        <summary aria-labelledby="f-rivales-label"><span id="f-rivales-resumen">Todos</span></summary>
         <div class="filtro-dropdown-panel">
           <input type="text" id="f-rivales-buscar" placeholder="Buscar rival…" aria-label="Buscar rival" class="input-busqueda" />
           <div class="filtro-chips-lista" role="group" aria-label="Rival" id="f-rivales"></div>
@@ -178,15 +226,20 @@ function construirControlesFiltro() {
       </details>
     </div>
     <div class="filtro-campo">
-      <span id="f-resultado-label">Resultado</span>
-      <div class="filtro-chips" role="group" aria-labelledby="f-resultado-label" id="f-resultado">
-        ${["G", "E", "P"].map((r) => `
-          <label><input type="checkbox" name="resultado" value="${r}" /> ${r}</label>
-        `).join("")}
-      </div>
+      <span class="filtro-etiqueta" id="f-resultado-label">Resultado</span>
+      <details class="filtro-dropdown">
+        <summary aria-labelledby="f-resultado-label"><span id="f-resultado-resumen">Todos</span></summary>
+        <div class="filtro-dropdown-panel">
+          <div class="filtro-chips-lista" role="group" aria-label="Resultado" id="f-resultado">
+            ${["G", "E", "P"].map((r) => `
+              <label><input type="checkbox" name="resultado" value="${r}" /> ${r}</label>
+            `).join("")}
+          </div>
+        </div>
+      </details>
     </div>
     <div class="filtro-campo">
-      <span id="f-ultimos-label">Últimos partidos</span>
+      <span class="filtro-etiqueta" id="f-ultimos-label">Últimos partidos</span>
       <div class="filtro-ultimos" role="group" aria-labelledby="f-ultimos-label">
         <button type="button" data-ultimos="">Todos</button>
         <button type="button" data-ultimos="3">3</button>
@@ -208,10 +261,11 @@ function construirControlesFiltro() {
   for (const cb of cont.querySelectorAll('input[name="rival"]')) {
     cb.checked = filtros.rivales?.has(cb.value) ?? false;
   }
-  actualizarBadgeRivales(cont);
+  actualizarResumenRivales(cont);
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.checked = filtros.resultados?.has(cb.value) ?? false;
   }
+  actualizarResumenResultados(cont);
   actualizarBotonesUltimos(cont);
   if (filtros.ultimos != null && ![3, 5, 10].includes(filtros.ultimos)) {
     cont.querySelector("#f-ultimos-custom").value = filtros.ultimos;
@@ -225,7 +279,7 @@ function construirControlesFiltro() {
     cb.addEventListener("change", () => {
       const marcados = [...cont.querySelectorAll('input[name="rival"]:checked')].map((c) => c.value);
       estado.filtros.rivales = marcados.length ? new Set(marcados) : undefined;
-      actualizarBadgeRivales(cont);
+      actualizarResumenRivales(cont);
       onFiltrosCambiaron();
     });
   }
@@ -243,6 +297,7 @@ function construirControlesFiltro() {
     cb.addEventListener("change", () => {
       const marcados = [...cont.querySelectorAll('input[name="resultado"]:checked')].map((c) => c.value);
       estado.filtros.resultados = marcados.length ? new Set(marcados) : undefined;
+      actualizarResumenResultados(cont);
       onFiltrosCambiaron();
     });
   }
@@ -272,12 +327,23 @@ function onFiltrosCambiaron() {
   renderVistaActual();
 }
 
-// cuántos rivales hay tildados, para no tener que abrir el desplegable a ver
-function actualizarBadgeRivales(cont) {
-  const badge = cont.querySelector("#f-rivales-badge");
-  const n = estado.filtros.rivales?.size ?? 0;
-  badge.hidden = n === 0;
-  badge.textContent = ` (${n})`;
+// texto del <summary> de un desplegable de selección múltiple (Rival,
+// Resultado): "Todos" si no hay nada tildado, los valores si son pocos
+// (p.ej. "G, P"), o el total si son muchos (nombres de rival pueden ser
+// largos) — así no hace falta abrir el desplegable para ver qué hay elegido.
+function textoResumenSeleccion(seleccionados) {
+  const n = seleccionados?.size ?? 0;
+  if (n === 0) return "Todos";
+  if (n <= 2) return [...seleccionados].join(", ");
+  return `${n} seleccionados`;
+}
+
+function actualizarResumenRivales(cont) {
+  cont.querySelector("#f-rivales-resumen").textContent = textoResumenSeleccion(estado.filtros.rivales);
+}
+
+function actualizarResumenResultados(cont) {
+  cont.querySelector("#f-resultado-resumen").textContent = textoResumenSeleccion(estado.filtros.resultados);
 }
 
 // qué botón de "últimos partidos" queda verde (aria-pressed): hay que
@@ -342,48 +408,63 @@ function renderVistaActual() {
 
 function renderResumen(cont, ids) {
   const r = resumenEquipo(estado.data, ids);
+  const tarjetaUltimo = renderTarjetaUltimoPartido();
   if (r.pj === 0) {
-    cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
+    cont.innerHTML = `<p class="estado-vacio">No hay partidos para estos filtros.</p>${tarjetaUltimo}`;
     return;
   }
+  const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
-    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-tarjeta")}
-    ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]], "resumen-tarjeta")}
-    ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]], "resumen-tarjeta")}
-    <p>Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
-    <h2>Por tipo de partido</h2>
-    <p class="estado-vacio" style="padding:0.25rem 0;text-align:left">Este bloque ignora el filtro de Tipo.</p>
-    <div class="resumen-por-tipo" id="resumen-por-tipo"></div>
+    ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]])}
+    ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
+    ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
+    <p>${puntosForma(forma)} Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
+    ${tarjetaUltimo}
   `;
-  const porTipo = resumenPorTipo(estado.data, estado.filtros);
-  cont.querySelector("#resumen-por-tipo").innerHTML = Object.entries(porTipo)
-    .map(([tipo, r2]) => `
-      <div class="tarjeta-tipo">
-        <strong>${tipo}</strong>
-        ${filaTarjetas([["PJ", r2.pj], ["% vict.", fmtPorcentaje(r2.pctVictorias)]])}
-        ${filaTarjetas([["G", r2.g, "tarjeta-g"], ["E", r2.e, "tarjeta-e"], ["P", r2.p, "tarjeta-p"]])}
-        ${filaTarjetas([["GF", r2.gf], ["GC", r2.gc]])}
-      </div>
-    `)
-    .join("");
 }
 
 // una fila = un grupo semántico (resultado, goles, etc.) en su propia grilla,
 // para separarlos visualmente en vez de una sola grilla con las 8 tarjetas
-// mezcladas. La grilla grande de arriba y las mini-grillas de "por tipo de
-// partido" comparten el mismo marcado, solo cambia el tamaño (CSS, claseBase).
-function filaTarjetas(items, claseBase = "mini-tarjeta") {
-  const grilla = claseBase === "resumen-tarjeta" ? "resumen-grid" : "mini-grid";
-  const tarjetas = items.map(([et, val, clase = ""]) => miniTarjeta(et, val, clase, claseBase)).join("");
-  return `<div class="${grilla}">${tarjetas}</div>`;
+// mezcladas.
+function filaTarjetas(items) {
+  const tarjetas = items.map(([et, val, clase = ""]) => miniTarjeta(et, val, clase)).join("");
+  return `<div class="resumen-grid">${tarjetas}</div>`;
 }
 
-function miniTarjeta(etiqueta, valor, clase, claseBase) {
-  return `<div class="${claseBase} ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
+function miniTarjeta(etiqueta, valor, clase) {
+  return `<div class="resumen-tarjeta ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
 }
 
 function etiquetaRacha(resultado) {
   return { G: "victoria(s) seguidas", E: "empate(s) seguidos", P: "derrota(s) seguidas" }[resultado];
+}
+
+function puntosForma(resultados) {
+  if (resultados.length === 0) return "";
+  const puntos = resultados.map((r) => `<span class="forma-punto forma-punto-${r}" title="${r}"></span>`).join("");
+  return `<span class="forma-puntos" aria-hidden="true">${puntos}</span>`;
+}
+
+// tarjeta "último partido": siempre el real más reciente, sin importar los
+// filtros activos (ver comentario de ultimoPartido() en stats.js) — es la
+// primera pregunta al abrir la página después de jugar un sábado.
+function renderTarjetaUltimoPartido() {
+  const u = ultimoPartido(estado.data);
+  if (!u) return "";
+  const golesTexto = (lista, icono) =>
+    lista.length ? `<p class="tarjeta-ultimo-detalle">${icono} ${lista.map((x) => `${x.nombre}${x.cantidad > 1 ? ` x${x.cantidad}` : ""}`).join(", ")}</p>` : "";
+  return `
+    <h2>Último partido</h2>
+    <div class="tarjeta-ultimo">
+      <div class="tarjeta-ultimo-header">
+        <span>${fmtFechaISO(u.fecha)} · ${u.tipo} vs ${u.rival}</span>
+        <span class="resultado resultado-${u.resultado}">${u.resultado}</span>
+      </div>
+      <div class="tarjeta-ultimo-marcador">Los Buitres ${u.gf} – ${u.gc} ${u.rival}</div>
+      ${golesTexto(u.goleadores, "⚽")}
+      ${golesTexto(u.asistidores, "🅰️")}
+    </div>
+  `;
 }
 
 const COLUMNAS_JUGADORES = [
@@ -417,7 +498,7 @@ function renderJugadores(cont, ids) {
         <tbody>
           ${filas.map((f) => `
             <tr>
-              <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${f.nombre_mostrar}</button></td>
+              <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${avatarHTML(f.nombre_mostrar)}${f.nombre_mostrar}</button></td>
               <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
               <td>${f.partidosConGa}</td>
               <td>${f.ta}</td><td>${f.tr}</td>
@@ -516,6 +597,7 @@ function renderPartidos(cont, ids) {
 function renderFicha(cont, ids) {
   const jugadores = estado.data.jugadores.slice().sort((a, b) => a.nombre_mostrar.localeCompare(b.nombre_mostrar));
   cont.innerHTML = `
+    <button type="button" class="boton-volver" id="ficha-volver">← Volver a Jugadores</button>
     <div class="filtro-campo" style="margin-bottom:1rem">
       <label for="ficha-select">Jugador</label>
       <select id="ficha-select">
@@ -525,6 +607,11 @@ function renderFicha(cont, ids) {
     </div>
     <div id="ficha-contenido"></div>
   `;
+  cont.querySelector("#ficha-volver").addEventListener("click", () => {
+    estado.vista = "jugadores";
+    actualizarURL();
+    renderVistaActual();
+  });
   const select = cont.querySelector("#ficha-select");
   select.value = estado.jugadorFichaId ?? "";
   select.addEventListener("change", () => {
@@ -541,12 +628,16 @@ function renderFichaContenido(cont, ids) {
     return;
   }
   const jugador = estado.data.jugadores.find((j) => j.id_jugador === estado.jugadorFichaId);
+  const encabezado = jugador
+    ? `<h3 class="ficha-encabezado">${avatarHTML(jugador.nombre_mostrar)}${jugador.nombre_mostrar}</h3>`
+    : "";
   const partidos = fichaJugador(estado.data, ids, estado.jugadorFichaId);
   if (partidos.length === 0) {
-    cont.innerHTML = `<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no tiene goles ni asistencias en estos filtros.</p>`;
+    cont.innerHTML = `${encabezado}<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no tiene goles ni asistencias en estos filtros.</p>`;
     return;
   }
   cont.innerHTML = `
+    ${encabezado}
     <div class="tabla-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Rival</th><th>Resultado</th><th style="text-align:left">Participación</th></tr></thead>
@@ -597,8 +688,8 @@ function renderDuos(cont, ids) {
         <tbody>
           ${duos.map((d) => `
             <tr>
-              <td style="text-align:left">${d.asistidor}</td>
-              <td style="text-align:left">${d.goleador}</td>
+              <td style="text-align:left">${avatarHTML(d.asistidor)}${d.asistidor}</td>
+              <td style="text-align:left">${avatarHTML(d.goleador)}${d.goleador}</td>
               <td>${d.cantidad}</td>
               <td style="text-align:left"><span style="display:inline-block;height:0.8rem;width:${(d.cantidad / maxCantidad) * 100}px;background:var(--color-acento);border-radius:3px"></span></td>
             </tr>

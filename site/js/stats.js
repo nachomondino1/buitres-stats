@@ -54,6 +54,42 @@ export function filtrarPartidos(data, filtros = {}) {
   return new Set(partidos.map((p) => p.id_partido));
 }
 
+/** Últimos N resultados (G/E/P) del set filtrado, del más viejo al más nuevo
+ * (para dibujar una racha de puntitos de izquierda a derecha). */
+export function ultimosResultados(data, idsPartidos, n = 5) {
+  const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
+  return partidos
+    .slice()
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, n)
+    .reverse()
+    .map((p) => p.resultado);
+}
+
+/** Último partido jugado por el equipo, con sus goleadores/asistidores ya
+ * agrupados. A propósito ignora los filtros activos (como resumenPorTipo
+ * ignora "tipo"): la pregunta que responde es "¿cómo salió el partido?", no
+ * "¿cómo salió el partido dentro de lo que tengo filtrado ahora?". */
+export function ultimoPartido(data) {
+  const ordenados = data.partidos.slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+  if (ordenados.length === 0) return null;
+  const partido = ordenados[0];
+  const goles = data.goles.filter((g) => g.id_partido === partido.id_partido && g.tipo_gol === "GF");
+  const nombrePorId = new Map(data.jugadores.map((j) => [j.id_jugador, j.nombre_mostrar]));
+
+  function agrupar(idsConCantidad) {
+    const conteo = new Map();
+    for (const id of idsConCantidad) conteo.set(id, (conteo.get(id) ?? 0) + 1);
+    return [...conteo.entries()].map(([id, cantidad]) => ({ nombre: nombrePorId.get(id) ?? id, cantidad }));
+  }
+
+  return {
+    ...partido,
+    goleadores: agrupar(goles.filter((g) => g.id_goleador).map((g) => g.id_goleador)),
+    asistidores: agrupar(goles.filter((g) => g.id_asistidor).map((g) => g.id_asistidor)),
+  };
+}
+
 /** PJ, G/E/P, GF, GC, Dif, % victorias y racha actual del set filtrado. */
 export function resumenEquipo(data, idsPartidos) {
   const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
@@ -88,24 +124,6 @@ export function resumenEquipo(data, idsPartidos) {
     pctVictorias: dividirONull(g, pj),
     racha,
   };
-}
-
-/** Resumen por tipo de partido, ignorando el filtro de tipo (spec §4 vista 1):
- * se aplican los demás filtros (fechas/rival/resultado/últimosN) y se separa
- * el resultado por cada tipo de partido presente en los datos. */
-export function resumenPorTipo(data, filtros = {}) {
-  const { tipo, ...filtrosSinTipo } = filtros;
-  const idsBase = filtrarPartidos(data, filtrosSinTipo);
-  const tipos = [...new Set(data.partidos.map((p) => p.tipo))];
-
-  const resultado = {};
-  for (const unTipo of tipos) {
-    const ids = new Set(
-      [...idsBase].filter((id) => data.partidos.find((p) => p.id_partido === id)?.tipo === unTipo)
-    );
-    resultado[unTipo] = resumenEquipo(data, ids);
-  }
-  return resultado;
 }
 
 /** Tabla de jugadores (vista 2): una fila por jugador que figura en alguna

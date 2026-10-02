@@ -2,6 +2,44 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## "Versión 2" de diseño y flujo (pedido de la usuaria, revisado antes de commitear)
+
+La usuaria pidió repensar diseño/flujo del sitio "desde cero" dentro de lo razonable;
+se armó una lista de ideas (flujo: tarjeta de último partido, swipe entre pestañas
+descartado por conflicto con el scroll horizontal de las tablas, pestañas fijas abajo
+en mobile, volver desde Ficha de jugador; diseño: avatar con color por jugador,
+racha en puntitos, skeleton loader, toggle de tema) y se implementó un subconjunto
+con buen impacto/esfuerzo y bajo riesgo visual. Se mostró el resultado en el navegador
+antes de commitear (pedido explícito) y se ajustó con feedback real:
+
+- Se sacó "Por tipo de partido" de Resumen (quedaba redundante con el filtro Tipo ya
+  existente) — de paso se borró `resumenPorTipo()` de `stats.js` y su test, ya sin uso.
+- La tarjeta "Último partido" pasó de arriba de todo a debajo de las tarjetas de
+  resultado, con su propio `<h2>` (si no, no quedaba claro qué era).
+- Filtro "Rival": se le agregó una etiqueta "Rival" arriba del desplegable (antes el
+  nombre solo vivía dentro del `<summary>`, inconsistente con "Tipo"). "Resultado"
+  pasó de 3 checkboxes sueltas a usar el mismo desplegable multi-selección que Rival
+  (menos espacio, mismo patrón) — con un `textoResumenSeleccion()` compartido: "Todos"
+  si no hay nada tildado, los valores si son ≤2, o el total si son más.
+- Bug visual que surgió recién en mobile real: el `<select>` de Tipo se estira al 100%
+  del ancho (es un `<select>` dentro de un flex column con `align-items: stretch`
+  implícito), pero el `<summary>` de los desplegables es `inline-flex` y no hereda eso
+  — quedaba angosto al lado de Tipo. Se le fuerza `width:100%` + `justify-content:
+  space-between` solo en el media query mobile (en desktop, con los filtros en fila,
+  el tamaño por contenido es lo que corresponde).
+- Toggle de tema manual: ciclo auto → oscuro → claro → auto, guardado en
+  `localStorage`. Usa el patrón `:root:not([data-theme="light"])` dentro del
+  `@media (prefers-color-scheme: dark)` + `:root[data-theme="dark"]` repetido afuera,
+  para que "forzar claro" le siga ganando al sistema en modo oscuro. Un script inline
+  en el `<head>` (antes de cargar `ui.js`) aplica el tema guardado antes del primer
+  pintado, si no hay flash del tema equivocado al cargar.
+- Avatar con color por jugador: hash simple del nombre -> hue de HSL, determinístico
+  (mismo jugador, mismo color siempre). Es la alternativa de "identidad visual" que se
+  había descartado con la foto grupal (ver más abajo) — no depende de fotos reales.
+- De paso, se encontró que el `defer` en `vendor/chart.min.js` (agregado en el fix de
+  Lighthouse) se había perdido sin querer al revertir el commit de la foto del
+  plantel, porque venían bundleados en el mismo commit. Restaurado.
+
 ## Orden de la tabla de jugadores en la URL (quinto ítem del backlog, impacto/esfuerzo)
 
 Era el que quedaba más barato del backlog: mismo patrón que ya existía para
