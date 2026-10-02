@@ -11,8 +11,9 @@ import {
   golesPorTiempo,
   partidosConDetalle,
   resumenEquipo,
-  resumenPorTipo,
   tablaJugadores,
+  ultimoPartido,
+  ultimosResultados,
 } from "./stats.js";
 
 // Dataset sintético chico, a mano, para no depender de data.json real.
@@ -120,13 +121,6 @@ test("resumenEquipo con set vacío: todo 0, pctVictorias y racha null (borde)", 
   assert.equal(r.racha, null);
 });
 
-test("resumenPorTipo ignora el filtro de tipo activo", () => {
-  const porTipo = resumenPorTipo(DATA, { tipo: "Torneo" });
-  // el resultado trae AMBOS tipos, no solo Torneo, porque tipo se descarta antes de armar el set base
-  assert.equal(porTipo.Torneo.pj, 2);
-  assert.equal(porTipo.Amistoso.pj, 2);
-});
-
 // ---------------- tablaJugadores ----------------
 
 test("tablaJugadores: PJ/G/A/TA/TR y derivados", () => {
@@ -223,4 +217,18 @@ test("duosAsistidorGoleador ignora goles sin asistidor o GC", () => {
   assert.equal(duos.length, 1);
   assert.equal(duos[0].asistidor, "Bruno");
   assert.equal(duos[0].goleador, "Ana");
+});
+
+// ---------------- ultimosResultados / ultimoPartido ----------------
+
+test("ultimosResultados: del más viejo al más nuevo, recortado a N", () => {
+  assert.deepEqual(ultimosResultados(DATA, TODOS, 5), ["G", "E", "P", "G"]); // p1,p2,p3,p4
+  assert.deepEqual(ultimosResultados(DATA, TODOS, 2), ["P", "G"]); // p3,p4
+});
+
+test("ultimoPartido: el de fecha más nueva, con goleadores/asistidores agrupados", () => {
+  const u = ultimoPartido(DATA);
+  assert.equal(u.id_partido, 4); // 2026-01-31 es el más nuevo
+  assert.deepEqual(u.goleadores, [{ nombre: "Bruno", cantidad: 2 }, { nombre: "Carla", cantidad: 1 }]);
+  assert.deepEqual(u.asistidores, [{ nombre: "Carla", cantidad: 2 }]);
 });

@@ -4,6 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Los Buitres — Estadísticas</title>
+  <script>
+    // aplicar el tema guardado ANTES del primer pintado, si no hay un flash
+    // del tema equivocado al cargar (ver construirToggleTema() en ui.js).
+    try {
+      var tema = localStorage.getItem("tema");
+      if (tema) document.documentElement.setAttribute("data-theme", tema);
+    } catch (e) {}
+  </script>
   <meta name="description" content="Estadísticas del equipo Los Buitres: resumen, tabla de jugadores, partidos, gráficos y dúos asistidor-goleador, con filtros." />
   <link rel="icon" type="image/png" href="media/cuadrada-transparente.png" />
 
@@ -30,7 +38,10 @@
   <header class="app-header">
     <div class="app-header-fila">
       <h1>Los Buitres — Estadísticas</h1>
-      <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+      <div class="app-header-acciones">
+        <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar tema">🌓</button>
+        <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+      </div>
     </div>
     <p>Filtrá por tipo de partido, rival, resultado o cantidad de últimos partidos.</p>
   </header>
@@ -40,12 +51,25 @@
   <nav class="tabs" role="tablist" aria-label="Vistas"></nav>
 
   <main>
-    <p class="estado-carga">Cargando datos…</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton-bloque" style="width:40%;height:1rem"></div>
+      <div class="skeleton-bloque" style="height:4.5rem"></div>
+      <div class="skeleton-grid">
+        <div class="skeleton-bloque"></div>
+        <div class="skeleton-bloque"></div>
+      </div>
+      <div class="skeleton-grid">
+        <div class="skeleton-bloque"></div>
+        <div class="skeleton-bloque"></div>
+        <div class="skeleton-bloque"></div>
+      </div>
+    </div>
+    <p class="estado-carga visually-hidden">Cargando datos…</p>
   </main>
 
   <footer class="app-footer"></footer>
 
-  <script src="vendor/chart.min.js"></script>
+  <script src="vendor/chart.min.js" defer></script>
   <script type="module" src="js/ui.js"></script>
 </body>
 </html>
