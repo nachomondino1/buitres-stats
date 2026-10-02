@@ -410,10 +410,10 @@ function actualizarBotonesUltimos(cont) {
 // ---------------- tabs ----------------
 
 const ETIQUETA_VISTA = {
-  resumen: "Resumen",
-  partidos: "Partidos",
-  equipo: "Equipo",
-  jugadores: "Jugadores",
+  resumen: "📊 Resumen",
+  partidos: "⚽ Partidos",
+  equipo: "🛡️ Equipo",
+  jugadores: "👥 Jugadores",
 };
 
 function construirTabs() {
@@ -505,10 +505,10 @@ function renderResumen(cont, ids) {
     ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
     ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
     <p class="resumen-forma">Últimos partidos: ${puntosForma(forma)}</p>
+    ${tarjetaUltimo}
     ${renderRachasHistoricas(ids, r.racha)}
     ${renderJugadoresDestacados(ids)}
     ${renderDatosCuriosos(ids)}
-    ${tarjetaUltimo}
   `;
   activarScrollASecciones(cont);
   for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
@@ -530,11 +530,13 @@ function renderRachasHistoricas(ids, rachaActual) {
   ];
   if (!rachaActual && items.every(([, racha]) => !racha)) return "";
   return `
-    <h2>Rachas</h2>
-    <div class="destacados-grid">
-      ${tarjetaRachaActual(rachaActual)}
-      ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
-    </div>
+    <details class="resumen-seccion">
+      <summary>Rachas</summary>
+      <div class="destacados-grid">
+        ${tarjetaRachaActual(rachaActual)}
+        ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
+      </div>
+    </details>
   `;
 }
 
@@ -584,10 +586,12 @@ function renderJugadoresDestacados(ids) {
   ];
   if (items.every(([, v]) => !v)) return "";
   return `
-    <h2>Jugadores destacados</h2>
-    <div class="destacados-grid">
-      ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
-    </div>
+    <details class="resumen-seccion">
+      <summary>Jugadores destacados</summary>
+      <div class="destacados-grid">
+        ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
+      </div>
+    </details>
   `;
 }
 
@@ -654,10 +658,12 @@ function renderDatosCuriosos(ids) {
 
   if (tarjetas.length === 0) return "";
   return `
-    <h2>Datos curiosos</h2>
-    <div class="destacados-grid">
-      ${tarjetas.join("")}
-    </div>
+    <details class="resumen-seccion">
+      <summary>Datos curiosos</summary>
+      <div class="destacados-grid">
+        ${tarjetas.join("")}
+      </div>
+    </details>
   `;
 }
 
