@@ -2,6 +2,21 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Medición de visitas: GoatCounter
+
+Se agregó un contador de visitas (`site/index.html`) para saber cuánto se usa el
+sitio. Se eligió **GoatCounter** en vez de Google Analytics:
+
+- No usa cookies ni recolecta datos personales, así que no hace falta agregar un
+  aviso/banner de consentimiento (GA4 sí lo requeriría al usar cookies).
+- Instalación mínima: un solo `<script>` con el código del sitio, nada de tags de
+  medición, streams ni consola de configuración.
+- El propio script de GoatCounter ignora automáticamente las visitas desde
+  `localhost`, así que probar el sitio en desarrollo no ensucia las estadísticas
+  reales.
+- Las estadísticas son más básicas que GA4 (visitas, páginas, referrers, sin
+  embudos ni segmentación), pero alcanzan para el objetivo de "saber si se usa".
+
 ## Ajustes finos sobre las 3 vistas (pedidos de la usuaria, revisados en el navegador)
 
 Ronda de retoques puntuales después de armar las 3 vistas, cada uno probado en
