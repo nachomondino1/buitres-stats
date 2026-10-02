@@ -2,6 +2,79 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Ajustes finos sobre las 3 vistas (pedidos de la usuaria, revisados en el navegador)
+
+Ronda de retoques puntuales después de armar las 3 vistas, cada uno probado en
+desktop y mobile antes de seguir con el siguiente:
+
+- **Tabs y filtros centrados en desktop**: `justify-content: center` en `.filtros` y
+  `nav.tabs`. Inofensivo en mobile (ahí el eje principal de `.filtros` es vertical por
+  el `flex-direction: column`, así que centrar no cambia nada visible).
+- **Título "Resultados"** agregado a la primera sección de Resumen (las tarjetas de
+  equipo no tenían encabezado propio, a diferencia de "Jugadores destacados" y "Último
+  partido").
+- **"Gráficos" → "Goles"** en la segunda sección de Equipo (subnav + `<h2>`): esa
+  sección es específicamente sobre goles (evolución, fuente, por tiempo), no gráficos
+  en general.
+- **Más espacio entre filtros**: `gap` de `.filtros` de `0.75rem` a `1.5rem`.
+- **Sin decimales en ningún lado**: `fmtNum`/`fmtPct` (en `ui.js`) pasan de
+  `maximumFractionDigits: 2`/`1` a `0` — afecta "Min/G+A" y todos los porcentajes
+  (antes p.ej. "52,9%" o "116,67"). Los gráficos (Chart.js) ya redondeaban los ejes
+  (`ticks: { precision: 0 }`), no hubo que tocarlos.
+- **Valores de tabla centrados**: el default de `th`/`td` pasa de `text-align: right`
+  a `center`; se mantienen a la izquierda la primera columna (ya tenía su propia regla)
+  y las columnas de texto/nombre con `style="text-align:left"` explícito (Goleador,
+  Participación, Heatmap) — "los valores" se entendió como las columnas numéricas, no
+  los nombres de jugadores.
+- **Tocar el título vuelve a Resumen**: el `<h1>` ahora envuelve un `<button>`
+  (`.boton-titulo`, estilado para no parecer un botón) que resetea `estado.vista` y
+  hace `scrollTo` arriba — mismo patrón que un logo/home de cualquier sitio.
+- **Nav fijo arriba en desktop al scrollear** (`position: sticky; top: 0`, solo
+  `nav.tabs`, no los filtros — se consideró pero los filtros ocupan mucho más alto y
+  en Resumen, que es corto, hubiera sido puro costo sin beneficio). Hizo falta
+  `scroll-margin-top` en las secciones (`main section[id]`) para que el scroll-to-section
+  del subnav y de "ir a la ficha de un jugador" no quedara tapado por la barra fija.
+
+## De 6 pestañas a 3 vistas con secciones (pedido de la usuaria)
+
+Se simplificó la navegación: en vez de una pestaña por tabla/gráfico (Resumen,
+Partidos, Gráficos, Jugadores, Ficha de jugador, Dúos), quedan 3 vistas con varias
+secciones apiladas adentro:
+
+- **Resumen**: tarjetas de equipo (PJ/%vict/G/E/P/GF/GC/Dif/racha) + **"Jugadores
+  destacados"** (nuevo: máximo goleador, máximo asistidor, más influyente en G+A, más
+  partidos jugados — pedido explícito de la usuaria, "que sea un resumen de verdad" de
+  equipo y jugadores) + "Último partido".
+- **Equipo**: sección "Partidos" (la lista con detalle al expandir) + sección
+  "Gráficos del equipo" (Evolución GF/GC, Fuente de goles, Goles por tiempo).
+- **Jugadores**: sección "Tabla" (la de siempre) + "Gráficos" (ranking
+  goleadores/G+A) + "Dúos asistidor→goleador" + "Ficha de jugador" (selector +
+  historial), todo en la misma página.
+
+**Jugadores destacados** se calcula con `jugadoresDestacados()` (nuevo en `stats.js`):
+toma el máximo de cada métrica sobre `tablaJugadores()` ya existente — no es una
+agregación nueva, es un `reduce` sobre datos que ya se calculaban. Un jugador en 0 no
+cuenta como "destacado" (no tiene sentido resaltar a alguien con 0 goles como "máximo
+goleador" solo porque nadie metió ninguno con esos filtros) → esa tarjeta queda vacía
+("–"). En caso de empate gana el primero en el orden de `data.jugadores` (determinístico,
+no es "más justo" que otro criterio, pero es predecible).
+
+**Navegación entre secciones de una misma vista:** como Equipo y Jugadores quedaron
+páginas largas (antes eran 2-4 pestañas separadas), se agregó una fila de botones
+("subnav") arriba de cada una que hace scroll suave a la sección — sin esto, Jugadores
+en particular (tabla + gráfico + dúos + ficha) era mucho scroll a ciegas. Tocar un
+jugador (en la tabla, en los dúos no por ahora, o en una tarjeta de "destacados" en
+Resumen) lleva directo a la sección Ficha con ese jugador ya elegido y hace scroll ahí
+— antes esto era cambiar de pestaña, ahora es la misma página.
+
+**Compatibilidad con links viejos:** un link guardado con `?vista=graficos` o
+`?vista=partidos` (de antes de agrupar) redirige a `equipo`; `?vista=ficha` o
+`?vista=duos` redirige a `jugadores` — mejor que resetear en silencio a Resumen.
+
+Se sacó el botón "Volver a Jugadores" de la Ficha (tenía sentido cuando era una pestaña
+aparte; ahora es la misma página, así que "volver" es scrollear o tocar "Tabla" en el
+subnav).
+
 ## "Versión 2" de diseño y flujo (pedido de la usuaria, revisado antes de commitear)
 
 La usuaria pidió repensar diseño/flujo del sitio "desde cero" dentro de lo razonable;

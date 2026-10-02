@@ -7,6 +7,7 @@ import {
   filtrarPartidos,
   fuentePorTipoGol,
   golesPorTiempo,
+  jugadoresDestacados,
   partidosConDetalle,
   resumenEquipo,
   tablaJugadores,
@@ -15,8 +16,10 @@ import {
 } from "./stats.js";
 import { dibujarEvolucion, dibujarRanking, dibujarFuenteGoles, dibujarGolesPorTiempo } from "./charts.js";
 
-const fmtNum = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
-const fmtPct = new Intl.NumberFormat("es-AR", { style: "percent", maximumFractionDigits: 1 });
+// maximumFractionDigits: 0 a propósito en los dos (pedido de la usuaria: nada
+// de decimales en la UI, ni en "Min/G+A" ni en los porcentajes).
+const fmtNum = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+const fmtPct = new Intl.NumberFormat("es-AR", { style: "percent", maximumFractionDigits: 0 });
 // timeZone: "UTC" es obligatorio acá: si no, Intl formatea en el huso horario
 // local del navegador y una fecha parseada como medianoche UTC puede mostrar
 // el día anterior (p.ej. Argentina, UTC-3).
@@ -56,13 +59,18 @@ const estado = {
   data: null,
   filtros: {},
   vista: "resumen",
-  orden: { resumen: null, jugadores: { columna: "g", direccion: "desc" } },
+  orden: { jugadores: { columna: "g", direccion: "desc" } },
   jugadorFichaId: null,
 };
 
-// agrupadas: equipo primero (resumen, partidos, gráficos trae varios charts
-// de equipo), después todo lo centrado en jugadores.
-const VISTAS = ["resumen", "partidos", "graficos", "jugadores", "ficha", "duos"];
+// 3 vistas, cada una con varias secciones adentro (pedido de la usuaria: menos
+// pestañas, agrupadas por tema, en vez de una pestaña por tabla/gráfico).
+const VISTAS = ["resumen", "equipo", "jugadores"];
+
+// vistas viejas (de antes de agrupar en 3) que puede traer un link guardado:
+// las mandamos a la vista nueva que más se le parece, en vez de resetear a
+// Resumen en silencio.
+const VISTA_LEGADO = { partidos: "equipo", graficos: "equipo", ficha: "jugadores", duos: "jugadores" };
 
 async function init() {
   const main = document.querySelector("main");
@@ -80,9 +88,20 @@ async function init() {
   construirTabs();
   construirBotonCompartir();
   construirToggleTema();
+  construirBotonTitulo();
   renderFooter();
   renderVistaActual();
   registrarServiceWorker();
+}
+
+// tocar el título vuelve a Resumen, como el logo/home de cualquier sitio.
+function construirBotonTitulo() {
+  document.getElementById("boton-titulo").addEventListener("click", () => {
+    estado.vista = "resumen";
+    actualizarURL();
+    renderVistaActual();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 // el <html data-theme> ya se aplica antes de este módulo (script inline en
@@ -166,7 +185,11 @@ function leerFiltrosDeURL() {
   if (params.has("resultados")) filtros.resultados = new Set(params.get("resultados").split(","));
   if (params.has("ultimos")) filtros.ultimos = Number(params.get("ultimos"));
   estado.filtros = filtros;
-  if (params.has("vista") && VISTAS.includes(params.get("vista"))) estado.vista = params.get("vista");
+  if (params.has("vista")) {
+    const v = params.get("vista");
+    if (VISTAS.includes(v)) estado.vista = v;
+    else if (VISTA_LEGADO[v]) estado.vista = VISTA_LEGADO[v];
+  }
   if (params.has("jugadorId")) estado.jugadorFichaId = params.get("jugadorId");
   if (params.has("ordenCol") && COLUMNAS_JUGADORES.some((c) => c.clave === params.get("ordenCol"))) {
     estado.orden.jugadores = {
@@ -360,11 +383,8 @@ function actualizarBotonesUltimos(cont) {
 
 const ETIQUETA_VISTA = {
   resumen: "Resumen",
+  equipo: "Equipo",
   jugadores: "Jugadores",
-  partidos: "Partidos",
-  ficha: "Ficha de jugador",
-  graficos: "Gráficos",
-  duos: "Dúos",
 };
 
 function construirTabs() {
@@ -394,16 +414,42 @@ function renderVistaActual() {
   const main = document.querySelector("main");
   const ids = idsFiltrados();
 
-  const renderers = {
-    resumen: renderResumen,
-    jugadores: renderJugadores,
-    partidos: renderPartidos,
-    ficha: renderFicha,
-    graficos: renderGraficos,
-    duos: renderDuos,
-  };
+  const renderers = { resumen: renderResumen, equipo: renderEquipo, jugadores: renderJugadores };
   main.innerHTML = `<section role="tabpanel" id="panel-${estado.vista}" aria-labelledby="tab-${estado.vista}"></section>`;
   renderers[estado.vista](main.querySelector("section"), ids);
+}
+
+// fila de botones arriba de una vista con varias secciones, para saltar
+// directo a una sin tener que scrollear a mano (las vistas se alargaron al
+// agrupar temas que antes eran pestañas separadas).
+function renderSubnav(items) {
+  return `
+    <nav class="subnav" aria-label="Secciones de esta vista">
+      ${items.map(([id, etiqueta]) => `<button type="button" data-destino="${id}">${etiqueta}</button>`).join("")}
+    </nav>
+  `;
+}
+
+// cualquier [data-destino="id-de-sección"] (subnav, o el link de "volver" de
+// la ficha) hace scroll suave a esa sección; se busca de nuevo en cada
+// render porque las secciones se reconstruyen con cada cambio de filtro.
+function activarScrollASecciones(cont) {
+  for (const boton of cont.querySelectorAll("[data-destino]")) {
+    boton.addEventListener("click", () => {
+      document.getElementById(boton.dataset.destino)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
+// desde cualquier lado (tarjeta de "destacados" en Resumen, nombre de
+// jugador en la tabla): va a la vista Jugadores con esa ficha abierta y
+// scrollea a la sección.
+function irAFichaJugador(idJugador) {
+  estado.jugadorFichaId = idJugador;
+  estado.vista = "jugadores";
+  actualizarURL();
+  renderVistaActual();
+  document.getElementById("seccion-ficha")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderResumen(cont, ids) {
@@ -415,11 +461,50 @@ function renderResumen(cont, ids) {
   }
   const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
+    <h2>Resultados</h2>
     ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]])}
     ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
     ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
     <p>${puntosForma(forma)} Racha actual: ${r.racha ? `${r.racha.cantidad} ${etiquetaRacha(r.racha.resultado)}` : "–"}</p>
+    ${renderJugadoresDestacados(ids)}
     ${tarjetaUltimo}
+  `;
+  activarScrollASecciones(cont);
+  for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
+    boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
+  }
+}
+
+// "Resumen" tiene que ser un resumen de verdad: no solo números del equipo,
+// también quién se destaca individualmente (pedido de la usuaria). Un valor
+// en 0 no cuenta como "destacado" (jugadoresDestacados() ya filtra eso).
+function renderJugadoresDestacados(ids) {
+  const d = jugadoresDestacados(estado.data, ids);
+  const items = [
+    ["Máximo goleador", d.goleador, "goles"],
+    ["Máximo asistidor", d.asistidor, "asistencias"],
+    ["Más influyente", d.influyente, "G+A"],
+    ["Más partidos jugados", d.masPartidos, "PJ"],
+  ];
+  if (items.every(([, v]) => !v)) return "";
+  return `
+    <h2>Jugadores destacados</h2>
+    <div class="destacados-grid">
+      ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
+    </div>
+  `;
+}
+
+function tarjetaDestacado(etiqueta, v, unidad) {
+  if (!v) {
+    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
+  }
+  return `
+    <button type="button" class="tarjeta-destacado" data-jugador-id="${v.idJugador}">
+      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
+      <span class="tarjeta-destacado-jugador">${avatarHTML(v.nombre)}${v.nombre}</span>
+      <span class="tarjeta-destacado-valor">${v.valor} ${unidad}</span>
+    </button>
   `;
 }
 
@@ -481,81 +566,26 @@ const COLUMNAS_JUGADORES = [
   { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt },
 ];
 
-function renderJugadores(cont, ids) {
-  let filas = tablaJugadores(estado.data, ids);
-  const orden = estado.orden.jugadores;
-  filas = ordenarFilas(filas, orden);
+// ---------------- vista Equipo: Partidos + Gráficos del equipo ----------------
 
-  if (filas.length === 0) {
-    cont.innerHTML = '<p class="estado-vacio">No hay jugadores para estos filtros.</p>';
-    return;
-  }
-
+function renderEquipo(cont, ids) {
   cont.innerHTML = `
-    <div class="tabla-wrap">
-      <table>
-        <thead><tr>${COLUMNAS_JUGADORES.map((c) => thOrdenable(c, orden)).join("")}</tr></thead>
-        <tbody>
-          ${filas.map((f) => `
-            <tr>
-              <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${avatarHTML(f.nombre_mostrar)}${f.nombre_mostrar}</button></td>
-              <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
-              <td>${f.partidosConGa}</td>
-              <td>${f.ta}</td><td>${f.tr}</td>
-              <td>${f.primerGolEquipo}</td>
-              <td>${fmtPorcentaje(f.pctGaEquipo)}</td><td>${fmt(f.minPorGa)}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
+    ${renderSubnav([["seccion-partidos", "Partidos"], ["seccion-graficos-equipo", "Goles"]])}
+    <section id="seccion-partidos">
+      <h2>Partidos</h2>
+      <div id="partidos-contenido"></div>
+    </section>
+    <section id="seccion-graficos-equipo">
+      <h2>Goles</h2>
+      <div id="graficos-equipo-contenido"></div>
+    </section>
   `;
-
-  for (const th of cont.querySelectorAll("th[data-clave]")) {
-    th.addEventListener("click", () => {
-      const clave = th.dataset.clave;
-      if (orden.columna === clave) orden.direccion = orden.direccion === "desc" ? "asc" : "desc";
-      else {
-        orden.columna = clave;
-        orden.direccion = "desc";
-      }
-      actualizarURL();
-      renderVistaActual();
-    });
-  }
-  for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
-    boton.addEventListener("click", () => {
-      estado.jugadorFichaId = boton.dataset.jugadorId;
-      estado.vista = "ficha";
-      actualizarURL();
-      renderVistaActual();
-    });
-  }
+  activarScrollASecciones(cont);
+  renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
+  renderGraficosEquipoContenido(cont.querySelector("#graficos-equipo-contenido"), ids);
 }
 
-function thOrdenable(col, orden) {
-  return `<th data-clave="${col.clave}"${ariaSort(col, orden)}>${col.etiqueta}</th>`;
-}
-
-function ariaSort(col, orden) {
-  if (orden.columna !== col.clave) return "";
-  return ` aria-sort="${orden.direccion === "asc" ? "ascending" : "descending"}"`;
-}
-
-function ordenarFilas(filas, orden) {
-  if (!orden?.columna) return filas;
-  const signo = orden.direccion === "asc" ? 1 : -1;
-  return filas.slice().sort((a, b) => {
-    const va = a[orden.columna];
-    const vb = b[orden.columna];
-    if (va == null) return 1;
-    if (vb == null) return -1;
-    if (typeof va === "string") return signo * va.localeCompare(vb);
-    return signo * (va - vb);
-  });
-}
-
-function renderPartidos(cont, ids) {
+function renderPartidosContenido(cont, ids) {
   const partidos = partidosConDetalle(estado.data, ids).sort((a, b) => b.fecha.localeCompare(a.fecha));
   if (partidos.length === 0) {
     cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
@@ -594,10 +624,131 @@ function renderPartidos(cont, ids) {
   }
 }
 
-function renderFicha(cont, ids) {
+function renderGraficosEquipoContenido(cont, ids) {
+  if (ids.size === 0) {
+    cont.innerHTML = '<p class="estado-vacio">No hay datos para graficar con estos filtros.</p>';
+    return;
+  }
+  cont.innerHTML = `
+    <div class="grafico-card"><h3>Evolución GF/GC por partido</h3><canvas id="chart-evolucion" role="img" aria-label="Gráfico de evolución de goles a favor y en contra por partido"></canvas></div>
+    <div class="grafico-card"><h3>Fuente de los goles (GF vs GC)</h3><canvas id="chart-fuente" role="img" aria-label="Gráfico de fuente de los goles a favor y en contra"></canvas></div>
+    <div class="grafico-card"><h3>Goles por tiempo (1T vs 2T)</h3><canvas id="chart-tiempo" role="img" aria-label="Gráfico de goles por primer y segundo tiempo"></canvas></div>
+  `;
+  dibujarEvolucion(cont.querySelector("#chart-evolucion"), evolucionGfGc(estado.data, ids), fmtFechaISO);
+  dibujarFuenteGoles(cont.querySelector("#chart-fuente"), fuentePorTipoGol(estado.data, ids));
+  dibujarGolesPorTiempo(cont.querySelector("#chart-tiempo"), golesPorTiempo(estado.data, ids));
+}
+
+// ---------------- vista Jugadores: tabla + gráficos + dúos + ficha ----------------
+
+function renderJugadores(cont, ids) {
+  cont.innerHTML = `
+    ${renderSubnav([
+      ["seccion-tabla-jugadores", "Tabla"],
+      ["seccion-graficos-jugadores", "Gráficos"],
+      ["seccion-duos", "Dúos"],
+      ["seccion-ficha", "Ficha"],
+    ])}
+    <section id="seccion-tabla-jugadores">
+      <h2>Jugadores</h2>
+      <div id="tabla-jugadores-contenido"></div>
+    </section>
+    <section id="seccion-graficos-jugadores">
+      <h2>Gráficos</h2>
+      <div id="graficos-jugadores-contenido"></div>
+    </section>
+    <section id="seccion-duos">
+      <h2>Dúos asistidor → goleador</h2>
+      <div id="duos-contenido"></div>
+    </section>
+    <section id="seccion-ficha">
+      <h2>Ficha de jugador</h2>
+      <div id="ficha-selector"></div>
+      <div id="ficha-contenido"></div>
+    </section>
+  `;
+  activarScrollASecciones(cont);
+  renderTablaJugadoresContenido(cont.querySelector("#tabla-jugadores-contenido"), ids);
+  renderGraficoJugadoresContenido(cont.querySelector("#graficos-jugadores-contenido"), ids);
+  renderDuosContenido(cont.querySelector("#duos-contenido"), ids);
+  renderFichaSelector(cont.querySelector("#ficha-selector"));
+  renderFichaContenido(cont.querySelector("#ficha-contenido"), ids);
+}
+
+function renderTablaJugadoresContenido(cont, ids) {
+  let filas = tablaJugadores(estado.data, ids);
+  const orden = estado.orden.jugadores;
+  filas = ordenarFilas(filas, orden);
+
+  if (filas.length === 0) {
+    cont.innerHTML = '<p class="estado-vacio">No hay jugadores para estos filtros.</p>';
+    return;
+  }
+
+  cont.innerHTML = `
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr>${COLUMNAS_JUGADORES.map((c) => thOrdenable(c, orden)).join("")}</tr></thead>
+        <tbody>
+          ${filas.map((f) => `
+            <tr>
+              <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${avatarHTML(f.nombre_mostrar)}${f.nombre_mostrar}</button></td>
+              <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
+              <td>${f.partidosConGa}</td>
+              <td>${f.ta}</td><td>${f.tr}</td>
+              <td>${f.primerGolEquipo}</td>
+              <td>${fmtPorcentaje(f.pctGaEquipo)}</td><td>${fmt(f.minPorGa)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // re-renderiza solo esta sección (no toda la vista): así ordenar no reinicia
+  // el resto de las secciones (gráficos, dúos, ficha ya abierta, scroll).
+  for (const th of cont.querySelectorAll("th[data-clave]")) {
+    th.addEventListener("click", () => {
+      const clave = th.dataset.clave;
+      if (orden.columna === clave) orden.direccion = orden.direccion === "desc" ? "asc" : "desc";
+      else {
+        orden.columna = clave;
+        orden.direccion = "desc";
+      }
+      actualizarURL();
+      renderTablaJugadoresContenido(cont, ids);
+    });
+  }
+  for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
+    boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
+  }
+}
+
+function thOrdenable(col, orden) {
+  return `<th data-clave="${col.clave}"${ariaSort(col, orden)}>${col.etiqueta}</th>`;
+}
+
+function ariaSort(col, orden) {
+  if (orden.columna !== col.clave) return "";
+  return ` aria-sort="${orden.direccion === "asc" ? "ascending" : "descending"}"`;
+}
+
+function ordenarFilas(filas, orden) {
+  if (!orden?.columna) return filas;
+  const signo = orden.direccion === "asc" ? 1 : -1;
+  return filas.slice().sort((a, b) => {
+    const va = a[orden.columna];
+    const vb = b[orden.columna];
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string") return signo * va.localeCompare(vb);
+    return signo * (va - vb);
+  });
+}
+
+function renderFichaSelector(cont) {
   const jugadores = estado.data.jugadores.slice().sort((a, b) => a.nombre_mostrar.localeCompare(b.nombre_mostrar));
   cont.innerHTML = `
-    <button type="button" class="boton-volver" id="ficha-volver">← Volver a Jugadores</button>
     <div class="filtro-campo" style="margin-bottom:1rem">
       <label for="ficha-select">Jugador</label>
       <select id="ficha-select">
@@ -605,21 +756,14 @@ function renderFicha(cont, ids) {
         ${jugadores.map((j) => `<option value="${j.id_jugador}">${j.nombre_mostrar}</option>`).join("")}
       </select>
     </div>
-    <div id="ficha-contenido"></div>
   `;
-  cont.querySelector("#ficha-volver").addEventListener("click", () => {
-    estado.vista = "jugadores";
-    actualizarURL();
-    renderVistaActual();
-  });
   const select = cont.querySelector("#ficha-select");
   select.value = estado.jugadorFichaId ?? "";
   select.addEventListener("change", () => {
     estado.jugadorFichaId = select.value || null;
     actualizarURL();
-    renderFichaContenido(cont.querySelector("#ficha-contenido"), ids);
+    renderFichaContenido(document.getElementById("ficha-contenido"), idsFiltrados());
   });
-  renderFichaContenido(cont.querySelector("#ficha-contenido"), ids);
 }
 
 function renderFichaContenido(cont, ids) {
@@ -656,25 +800,19 @@ function renderFichaContenido(cont, ids) {
   `;
 }
 
-function renderGraficos(cont, ids) {
-  cont.innerHTML = `
-    <div class="grafico-card"><h3>Evolución GF/GC por partido</h3><canvas id="chart-evolucion" role="img" aria-label="Gráfico de evolución de goles a favor y en contra por partido"></canvas></div>
-    <div class="grafico-card"><h3>Ranking goleadores y G+A</h3><canvas id="chart-ranking" role="img" aria-label="Gráfico de ranking de goleadores y goles más asistencias"></canvas></div>
-    <div class="grafico-card"><h3>Fuente de los goles (GF vs GC)</h3><canvas id="chart-fuente" role="img" aria-label="Gráfico de fuente de los goles a favor y en contra"></canvas></div>
-    <div class="grafico-card"><h3>Goles por tiempo (1T vs 2T)</h3><canvas id="chart-tiempo" role="img" aria-label="Gráfico de goles por primer y segundo tiempo"></canvas></div>
-  `;
-  const evolucion = evolucionGfGc(estado.data, ids);
-  if (evolucion.length === 0) {
+function renderGraficoJugadoresContenido(cont, ids) {
+  const filas = tablaJugadores(estado.data, ids);
+  if (filas.length === 0) {
     cont.innerHTML = '<p class="estado-vacio">No hay datos para graficar con estos filtros.</p>';
     return;
   }
-  dibujarEvolucion(cont.querySelector("#chart-evolucion"), evolucion, fmtFechaISO);
-  dibujarRanking(cont.querySelector("#chart-ranking"), tablaJugadores(estado.data, ids));
-  dibujarFuenteGoles(cont.querySelector("#chart-fuente"), fuentePorTipoGol(estado.data, ids));
-  dibujarGolesPorTiempo(cont.querySelector("#chart-tiempo"), golesPorTiempo(estado.data, ids));
+  cont.innerHTML = `
+    <div class="grafico-card"><h3>Ranking goleadores y G+A</h3><canvas id="chart-ranking" role="img" aria-label="Gráfico de ranking de goleadores y goles más asistencias"></canvas></div>
+  `;
+  dibujarRanking(cont.querySelector("#chart-ranking"), filas);
 }
 
-function renderDuos(cont, ids) {
+function renderDuosContenido(cont, ids) {
   const duos = duosAsistidorGoleador(estado.data, ids);
   if (duos.length === 0) {
     cont.innerHTML = '<p class="estado-vacio">No hay dúos asistidor→goleador para estos filtros.</p>';

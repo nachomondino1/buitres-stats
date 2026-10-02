@@ -9,6 +9,7 @@ import {
   filtrarPartidos,
   fuentePorTipoGol,
   golesPorTiempo,
+  jugadoresDestacados,
   partidosConDetalle,
   resumenEquipo,
   tablaJugadores,
@@ -166,6 +167,22 @@ test("minPorGa usa MINUTOS_PARTIDO", () => {
   assert.equal(bruno.ga, 4);
   assert.equal(bruno.partidosConGa, 2); // p1 (gol+asist. cuentan 1 solo partido) y p4
   assert.equal(bruno.minPorGa, (2 * MINUTOS_PARTIDO) / 4);
+});
+
+// ---------------- jugadoresDestacados ----------------
+
+test("jugadoresDestacados: máximos del set filtrado (empate lo gana el primero en orden de datos)", () => {
+  const d = jugadoresDestacados(DATA, TODOS);
+  assert.deepEqual(d.goleador, { nombre: "Bruno", idJugador: "J02", valor: 3 });
+  assert.deepEqual(d.asistidor, { nombre: "Carla", idJugador: "J03", valor: 2 });
+  // Bruno y Carla empatan en ga=4; Bruno aparece primero en data.jugadores
+  assert.deepEqual(d.influyente, { nombre: "Bruno", idJugador: "J02", valor: 4 });
+  assert.deepEqual(d.masPartidos, { nombre: "Ana", idJugador: "J01", valor: 3 });
+});
+
+test("jugadoresDestacados: set vacío da todo null (nadie jugó, nadie es 'el máximo')", () => {
+  const d = jugadoresDestacados(DATA, new Set());
+  assert.deepEqual(d, { goleador: null, asistidor: null, influyente: null, masPartidos: null });
 });
 
 // ---------------- partidosConDetalle / fichaJugador ----------------
