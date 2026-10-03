@@ -292,9 +292,11 @@ test("partidosConDetalle trae alineación y goles de cada partido", () => {
   assert.equal(p1.goles.length, 3);
 });
 
-test("fichaJugador: solo partidos donde metió gol o asistió, ordenados por fecha", () => {
-  const ficha = fichaJugador(DATA, TODOS, "J03");
-  assert.deepEqual(ficha.map((p) => p.id_partido), [3, 4]);
+test("fichaJugador: todos los partidos jugados (según alineación), ordenados por fecha", () => {
+  const ficha = fichaJugador(DATA, TODOS, "J01");
+  assert.deepEqual(ficha.map((p) => p.id_partido), [1, 2, 3]);
+  // no metió gol ni asistió en el partido 2, pero lo jugó -> aparece con goles vacío
+  assert.deepEqual(ficha.find((p) => p.id_partido === 2).goles, []);
 });
 
 test("fichaJugador respeta el set de partidos filtrado", () => {
