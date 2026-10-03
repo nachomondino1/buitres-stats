@@ -151,9 +151,21 @@ function actualizarIconoTema(boton) {
 }
 
 function registrarServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+
+  // sw.js ya hace skipWaiting()+clients.claim() al activar una versión nueva
+  // (ver comentario de CACHE ahí), pero sin esto quien ya tenía la página
+  // abierta seguía viendo el JS/CSS viejo cargado en memoria hasta que
+  // recargaba a mano. "controllerchange" se dispara justo cuando el SW nuevo
+  // toma control: ahí recargamos solos para que el update llegue de una,
+  // sin depender de que el usuario limpie cache o refresque.
+  let yaRecargando = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (yaRecargando) return;
+    yaRecargando = true;
+    window.location.reload();
+  });
 }
 
 // Web Share API (navigator.share): en el celular abre el panel nativo para
