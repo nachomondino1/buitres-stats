@@ -1249,7 +1249,7 @@ function renderFichaContenido(cont, ids) {
   const tarjeta = jugador ? renderTarjetaFichaJugador(jugador, ids) : "";
   const partidos = fichaJugador(estado.data, ids, estado.jugadorFichaId);
   if (partidos.length === 0) {
-    cont.innerHTML = `${tarjeta}<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no tiene goles ni asistencias en estos filtros.</p>`;
+    cont.innerHTML = `${tarjeta}<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no jugó partidos en estos filtros.</p>`;
     return;
   }
   cont.innerHTML = `
@@ -1263,7 +1263,7 @@ function renderFichaContenido(cont, ids) {
               <td>${fmtFechaISO(p.fecha)}</td>
               <td>${p.rival}</td>
               <td><span class="resultado resultado-${p.resultado}">${p.gf}-${p.gc} ${p.resultado}</span></td>
-              <td style="text-align:left">${p.goles.map((g) => g.id_goleador === estado.jugadorFichaId ? `Gol (#${g.nro_gol})` : `Asistencia`).join(", ")}</td>
+              <td style="text-align:left">${p.goles.length > 0 ? p.goles.map((g) => g.id_goleador === estado.jugadorFichaId ? `Gol (#${g.nro_gol})` : `Asistencia`).join(", ") : "–"}</td>
             </tr>
           `).join("")}
         </tbody>

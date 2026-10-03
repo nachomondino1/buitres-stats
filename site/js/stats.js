@@ -287,15 +287,19 @@ export function partidosConDetalle(data, idsPartidos) {
     }));
 }
 
-/** Ficha de jugador (vista 4): partidos del set filtrado en los que metió gol
- * y/o dio asistencia, con esos goles ya resueltos. */
+/** Ficha de jugador (vista 4): todos los partidos jugados del set filtrado
+ * (según alineación), con los goles/asistencias de ese partido ya resueltos. */
 export function fichaJugador(data, idsPartidos, idJugador) {
+  const idsJugados = new Set(
+    data.alineaciones
+      .filter((a) => idsPartidos.has(a.id_partido) && a.id_jugador === idJugador)
+      .map((a) => a.id_partido)
+  );
   const golesDelJugador = data.goles.filter(
     (g) => idsPartidos.has(g.id_partido) && (g.id_goleador === idJugador || g.id_asistidor === idJugador)
   );
-  const idsConParticipacion = new Set(golesDelJugador.map((g) => g.id_partido));
   return data.partidos
-    .filter((p) => idsConParticipacion.has(p.id_partido))
+    .filter((p) => idsJugados.has(p.id_partido))
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
     .map((p) => ({
       ...p,
