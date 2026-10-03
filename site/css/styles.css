@@ -584,20 +584,21 @@ main {
 
 /* Rachas / Jugadores destacados / Datos curiosos apilados y siempre abiertos
    abrumaban la primera pantalla de Resumen (pedido de la usuaria). En vez de
-   plegarlos, cada uno es su propio <section> con mucho aire alrededor, para
-   que se lean de a uno a medida que se scrollea en vez de todos juntos. La
-   primera ("Resultados") ocupa la pantalla completa al entrar, como una
-   portada, y recién al scrollear aparece el resto. */
+   plegarlos, cada uno es su propio <section> con aire alrededor, para que se
+   lean de a uno a medida que se scrollea en vez de todos juntos. */
 .resumen-bloque {
   padding: 3rem 0;
 }
 
+/* la sección "Resultados" fue en algún momento "pantalla completa, como una
+   portada" (min-height:100vh + centrado vertical), pero con pocos partidos
+   cargados el contenido real queda bastante más corto que una pantalla
+   entera, y centrarlo dejaba un hueco enorme y vacío arriba Y abajo —
+   quedaba mal tanto en mobile como en desktop. Ahora es como cualquier otro
+   bloque de Resumen, solo con un poco menos de aire arriba (ya viene
+   pegado a los filtros). */
 .resumen-bloque-hero {
-  min-height: 100vh;
   padding-top: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
 /* ---------- jugadores destacados (Resumen) ---------- */
@@ -1079,10 +1080,6 @@ main section + section {
   }
   .resumen-bloque-hero {
     padding-top: 1rem;
-    /* flex-start, no center: con min-height:100vh, si el contenido filtrado
-       es más corto que la pantalla (p.ej. pocos partidos), centrarlo dejaba
-       un hueco igual de grande arriba Y abajo en vez de uno solo abajo. */
-    justify-content: flex-start;
   }
   main section + section {
     margin-top: 1rem;
