@@ -972,10 +972,11 @@ main section + section {
 }
 
 /* línea chica debajo del <h2> de una sección explicando qué se va a ver
-   (pedido de la usuaria): discreta a propósito, no compite con el título. */
+   (pedido de la usuaria): discreta a propósito, no compite con el título.
+   Sin max-width: con uno en "ch" se cortaba a la mitad del ancho del resto
+   del contenido (tablas, grillas) y quedaba descolgado. */
 .seccion-descripcion {
   margin: 0.2rem 0 1rem;
-  max-width: 60ch;
   color: var(--color-texto-tenue);
   font-size: 0.85rem;
 }
@@ -1066,6 +1067,25 @@ main section + section {
   }
   main section[id] {
     scroll-margin-top: 3.2rem;
+  }
+
+  /* las secciones de Resumen (Rachas/Destacados/Curiosos) ya traen su propio
+     "aire" (.resumen-bloque, 3rem arriba y abajo); sumado al margen+padding
+     genérico de "main section + section" para el divisor, en mobile el hueco
+     entre una sección y la siguiente quedaba enorme sin nada adentro.
+     Achicado solo acá: en desktop con más alto de pantalla no se nota tanto. */
+  .resumen-bloque {
+    padding: 1.75rem 0;
+  }
+  .resumen-bloque-hero {
+    padding-top: 1rem;
+    /* flex-start, no center: con min-height:100vh, si el contenido filtrado
+       es más corto que la pantalla (p.ej. pocos partidos), centrarlo dejaba
+       un hueco igual de grande arriba Y abajo en vez de uno solo abajo. */
+    justify-content: flex-start;
+  }
+  main section + section {
+    margin-top: 1rem;
   }
 
   /* pestañas fijas abajo (como cualquier app nativa): en el celular, que es
