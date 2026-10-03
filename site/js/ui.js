@@ -197,7 +197,6 @@ function leerFiltrosDeURL() {
   const params = new URLSearchParams(window.location.search);
   const filtros = {};
   if (params.has("tipo")) filtros.tipo = params.get("tipo");
-  if (params.has("rivales")) filtros.rivales = new Set(params.get("rivales").split(","));
   if (params.has("resultados")) filtros.resultados = new Set(params.get("resultados").split(","));
   if (params.has("ultimos")) filtros.ultimos = Number(params.get("ultimos"));
   estado.filtros = filtros;
@@ -219,7 +218,6 @@ function actualizarURL() {
   const params = new URLSearchParams();
   const f = estado.filtros;
   if (f.tipo && f.tipo !== "Todos") params.set("tipo", f.tipo);
-  if (f.rivales && f.rivales.size) params.set("rivales", [...f.rivales].join(","));
   if (f.resultados && f.resultados.size) params.set("resultados", [...f.resultados].join(","));
   if (f.ultimos != null) params.set("ultimos", String(f.ultimos));
   if (estado.vista !== "resumen") params.set("vista", estado.vista);
@@ -244,99 +242,80 @@ function construirControlesFiltro() {
   const cont = document.querySelector(".filtros");
   const { data, filtros } = estado;
   const tipos = [...new Set(data.partidos.map((p) => p.tipo))].sort();
-  const rivales = [...new Set(data.partidos.map((p) => p.rival))].sort();
 
+  // en mobile todo el bloque vive colapsado atrás de este botón (sticky,
+  // ocupa una sola línea); en desktop queda oculto por CSS y .filtros-panel
+  // se ve siempre entero (pedido de la usuaria: el filtro de Rival se sacó
+  // por desuso, y lo que queda no debía seguir ocupando una pantalla entera
+  // en mobile).
   cont.innerHTML = `
-    <div class="filtro-campo">
-      <label class="filtro-etiqueta" for="f-tipo">Tipo</label>
-      <select id="f-tipo">
-        <option value="">Todos</option>
-        ${tipos.map((t) => `<option value="${t}">${t}</option>`).join("")}
-      </select>
-    </div>
-    <div class="filtro-campo">
-      <span class="filtro-etiqueta" id="f-rivales-label">Rival</span>
-      <details class="filtro-dropdown" name="filtro-dropdown">
-        <summary aria-labelledby="f-rivales-label"><span id="f-rivales-resumen">Todos</span></summary>
-        <div class="filtro-dropdown-panel">
-          <input type="text" id="f-rivales-buscar" placeholder="Buscar rival…" aria-label="Buscar rival" class="input-busqueda" />
-          <div class="filtro-chips-lista" role="group" aria-label="Rival" id="f-rivales"></div>
-        </div>
-      </details>
-    </div>
-    <div class="filtro-campo">
-      <span class="filtro-etiqueta" id="f-resultado-label">Resultado</span>
-      <details class="filtro-dropdown" name="filtro-dropdown">
-        <summary aria-labelledby="f-resultado-label"><span id="f-resultado-resumen">Todos</span></summary>
-        <div class="filtro-dropdown-panel">
-          <div class="filtro-chips-lista" role="group" aria-label="Resultado" id="f-resultado">
-            ${["G", "E", "P"].map((r) => `
-              <label><input type="checkbox" name="resultado" value="${r}" /> ${r}</label>
-            `).join("")}
-          </div>
-        </div>
-      </details>
-    </div>
-    <div class="filtro-campo">
-      <span class="filtro-etiqueta" id="f-ultimos-label">Últimos partidos</span>
-      <div class="filtro-ultimos" role="group" aria-labelledby="f-ultimos-label">
-        <button type="button" data-ultimos="">Todos</button>
-        <button type="button" data-ultimos="3">3</button>
-        <button type="button" data-ultimos="5">5</button>
-        <button type="button" data-ultimos="10">10</button>
-        <input type="number" min="1" id="f-ultimos-custom" aria-label="Otra cantidad de últimos partidos" />
+    <button type="button" class="boton-filtros-toggle" id="boton-filtros-toggle" aria-expanded="false" aria-controls="filtros-panel">
+      <span>Filtros</span>
+      <span class="filtros-badge" id="filtros-badge" hidden>0</span>
+      <span class="filtros-toggle-icono" aria-hidden="true">▾</span>
+    </button>
+    <div class="filtros-panel" id="filtros-panel">
+      <div class="filtro-campo">
+        <label class="filtro-etiqueta" for="f-tipo">Tipo</label>
+        <select id="f-tipo">
+          <option value="">Todos</option>
+          ${tipos.map((t) => `<option value="${t}">${t}</option>`).join("")}
+        </select>
       </div>
+      <div class="filtro-campo">
+        <span class="filtro-etiqueta" id="f-resultado-label">Resultado</span>
+        <details class="filtro-dropdown" name="filtro-dropdown">
+          <summary aria-labelledby="f-resultado-label"><span id="f-resultado-resumen">Todos</span></summary>
+          <div class="filtro-dropdown-panel">
+            <div class="filtro-chips-lista" role="group" aria-label="Resultado" id="f-resultado">
+              ${["G", "E", "P"].map((r) => `
+                <label><input type="checkbox" name="resultado" value="${r}" /> ${r}</label>
+              `).join("")}
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="filtro-campo">
+        <span class="filtro-etiqueta" id="f-ultimos-label">Últimos partidos</span>
+        <div class="filtro-ultimos" role="group" aria-labelledby="f-ultimos-label">
+          <button type="button" data-ultimos="">Todos</button>
+          <button type="button" data-ultimos="3">3</button>
+          <button type="button" data-ultimos="5">5</button>
+          <button type="button" data-ultimos="10">10</button>
+          <input type="number" min="1" id="f-ultimos-custom" aria-label="Otra cantidad de últimos partidos" />
+        </div>
+      </div>
+      <button type="button" class="boton-limpiar">Limpiar filtros</button>
     </div>
-    <button type="button" class="boton-limpiar">Limpiar filtros</button>
   `;
-
-  const rivalesCont = cont.querySelector("#f-rivales");
-  rivalesCont.innerHTML = rivales
-    .map((r) => `<label><input type="checkbox" name="rival" value="${r}" /> ${r}</label>`)
-    .join("");
 
   // reflejar el estado actual de filtros en los controles recién creados
   cont.querySelector("#f-tipo").value = filtros.tipo ?? "";
-  for (const cb of cont.querySelectorAll('input[name="rival"]')) {
-    cb.checked = filtros.rivales?.has(cb.value) ?? false;
-  }
-  actualizarResumenRivales(cont);
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.checked = filtros.resultados?.has(cb.value) ?? false;
   }
   actualizarResumenResultados(cont);
   actualizarBotonesUltimos(cont);
+  actualizarBadgeFiltros(cont);
   if (filtros.ultimos != null && ![3, 5, 10].includes(filtros.ultimos)) {
     cont.querySelector("#f-ultimos-custom").value = filtros.ultimos;
   }
 
+  cont.querySelector("#boton-filtros-toggle").addEventListener("click", () => {
+    const abierto = cont.classList.toggle("filtros-abierto");
+    cont.querySelector("#boton-filtros-toggle").setAttribute("aria-expanded", String(abierto));
+  });
   cont.querySelector("#f-tipo").addEventListener("change", (e) => {
     estado.filtros.tipo = e.target.value || undefined;
+    actualizarBadgeFiltros(cont);
     onFiltrosCambiaron();
-  });
-  for (const cb of cont.querySelectorAll('input[name="rival"]')) {
-    cb.addEventListener("change", () => {
-      const marcados = [...cont.querySelectorAll('input[name="rival"]:checked')].map((c) => c.value);
-      estado.filtros.rivales = marcados.length ? new Set(marcados) : undefined;
-      actualizarResumenRivales(cont);
-      onFiltrosCambiaron();
-    });
-  }
-  cont.querySelector("#f-rivales-buscar").addEventListener("input", (e) => {
-    const busqueda = e.target.value.trim().toLowerCase();
-    for (const label of cont.querySelectorAll("#f-rivales label")) {
-      // style.display directo, no .hidden: ".filtro-chips-lista label { display:
-      // flex }" le gana en especificidad CSS al "display:none" que pone el
-      // atributo [hidden] del navegador (ambos pesan 1 clase/attr, pero la regla
-      // de acá suma un selector de tipo de más) y lo dejaba invisible solo en el DOM.
-      label.style.display = label.textContent.toLowerCase().includes(busqueda) ? "" : "none";
-    }
   });
   for (const cb of cont.querySelectorAll('input[name="resultado"]')) {
     cb.addEventListener("change", () => {
       const marcados = [...cont.querySelectorAll('input[name="resultado"]:checked')].map((c) => c.value);
       estado.filtros.resultados = marcados.length ? new Set(marcados) : undefined;
       actualizarResumenResultados(cont);
+      actualizarBadgeFiltros(cont);
       onFiltrosCambiaron();
     });
   }
@@ -345,6 +324,7 @@ function construirControlesFiltro() {
       estado.filtros.ultimos = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : undefined;
       cont.querySelector("#f-ultimos-custom").value = "";
       actualizarBotonesUltimos(cont);
+      actualizarBadgeFiltros(cont);
       onFiltrosCambiaron();
     });
   }
@@ -352,6 +332,7 @@ function construirControlesFiltro() {
     const valor = Number(e.target.value);
     estado.filtros.ultimos = e.target.value && valor > 0 ? valor : undefined;
     actualizarBotonesUltimos(cont);
+    actualizarBadgeFiltros(cont);
     onFiltrosCambiaron();
   });
   cont.querySelector(".boton-limpiar").addEventListener("click", () => {
@@ -370,6 +351,13 @@ function cerrarDropdownsFiltroAlClickAfuera() {
     for (const details of document.querySelectorAll(".filtro-dropdown[open]")) {
       if (!details.contains(e.target)) details.open = false;
     }
+    // mismo criterio para el panel colapsable de filtros en mobile (ver CSS,
+    // solo tiene efecto visual bajo los 600px): clickear afuera lo cierra.
+    const filtrosAbiertos = document.querySelector(".filtros.filtros-abierto");
+    if (filtrosAbiertos && !filtrosAbiertos.contains(e.target)) {
+      filtrosAbiertos.classList.remove("filtros-abierto");
+      filtrosAbiertos.querySelector("#boton-filtros-toggle")?.setAttribute("aria-expanded", "false");
+    }
   });
 }
 
@@ -378,19 +366,15 @@ function onFiltrosCambiaron() {
   renderVistaActual();
 }
 
-// texto del <summary> de un desplegable de selección múltiple (Rival,
-// Resultado): "Todos" si no hay nada tildado, los valores si son pocos
-// (p.ej. "G, P"), o el total si son muchos (nombres de rival pueden ser
-// largos) — así no hace falta abrir el desplegable para ver qué hay elegido.
+// texto del <summary> de un desplegable de selección múltiple (Resultado):
+// "Todos" si no hay nada tildado, los valores si son pocos (p.ej. "G, P"), o
+// el total si son muchos — así no hace falta abrir el desplegable para ver
+// qué hay elegido.
 function textoResumenSeleccion(seleccionados) {
   const n = seleccionados?.size ?? 0;
   if (n === 0) return "Todos";
   if (n <= 2) return [...seleccionados].join(", ");
   return `${n} seleccionados`;
-}
-
-function actualizarResumenRivales(cont) {
-  cont.querySelector("#f-rivales-resumen").textContent = textoResumenSeleccion(estado.filtros.rivales);
 }
 
 function actualizarResumenResultados(cont) {
@@ -405,6 +389,20 @@ function actualizarBotonesUltimos(cont) {
     const valor = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : null;
     boton.setAttribute("aria-pressed", String(valor === (estado.filtros.ultimos ?? null)));
   }
+}
+
+// cuántos filtros hay activos: se ve en el botón "Filtros" colapsado de
+// mobile, para no tener que abrirlo solo para confirmar que no quedó ninguno
+// tildado por accidente.
+function actualizarBadgeFiltros(cont) {
+  const badge = cont.querySelector("#filtros-badge");
+  if (!badge) return;
+  let n = 0;
+  if (estado.filtros.tipo) n++;
+  if (estado.filtros.resultados?.size) n++;
+  if (estado.filtros.ultimos != null) n++;
+  badge.hidden = n === 0;
+  badge.textContent = String(n);
 }
 
 // ---------------- tabs ----------------
@@ -536,6 +534,7 @@ function renderRachasHistoricas(ids, rachaActual) {
   if (!rachaActual && items.every(([, racha]) => !racha)) return "";
   return `
     <h2>Rachas</h2>
+    ${descripcionSeccion("La racha actual del equipo y los mejores (y peores) rachas de la historia, con el rango de fechas de cada una.")}
     <div class="destacados-grid">
       ${tarjetaRachaActual(rachaActual)}
       ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
@@ -590,6 +589,7 @@ function renderJugadoresDestacados(ids) {
   if (items.every(([, v]) => !v)) return "";
   return `
     <h2>Jugadores destacados</h2>
+    ${descripcionSeccion("Quién lidera cada estadística individual en los partidos filtrados. Tocá una tarjeta para ver la ficha completa de ese jugador.")}
     <div class="destacados-grid">
       ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
     </div>
@@ -660,6 +660,7 @@ function renderDatosCuriosos(ids) {
   if (tarjetas.length === 0) return "";
   return `
     <h2>Datos curiosos</h2>
+    ${descripcionSeccion("Coincidencias y récords que salen de cruzar los datos entre sí: rival más enfrentado, marcador que más se repitió, y más.")}
     <div class="destacados-grid">
       ${tarjetas.join("")}
     </div>
@@ -708,6 +709,13 @@ function filaTarjetas(items, claseFila = "") {
 
 function miniTarjeta(etiqueta, valor, clase) {
   return `<div class="resumen-tarjeta ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
+}
+
+// una línea chica debajo del <h2> de una sección, explicando qué se ve ahí
+// abajo antes de que el lector tenga que inferirlo de la tabla/gráfico
+// (pedido de la usuaria, ver ej. "Dúos" en la vista Jugadores).
+function descripcionSeccion(texto) {
+  return `<p class="seccion-descripcion">${texto}</p>`;
 }
 
 function etiquetaRacha(resultado) {
@@ -762,31 +770,50 @@ function renderTarjetaUltimoPartidoMini() {
   `;
 }
 
+// `glosario`: qué significa la sigla. Se usa como title del <abbr> (hover en
+// desktop) y además se lista entera en el desplegable "¿Qué significa cada
+// columna?" debajo de la tabla (en mobile no hay hover, pedido de la
+// usuaria). Las columnas sin sigla (nombre, rival) no necesitan ninguno.
 const COLUMNAS_JUGADORES = [
   { clave: "nombre_mostrar", etiqueta: "Jugador", numerica: false },
-  { clave: "pj", etiqueta: "PJ" },
-  { clave: "g", etiqueta: "G" },
-  { clave: "a", etiqueta: "A" },
-  { clave: "ga", etiqueta: "G+A" },
-  { clave: "partidosConGa", etiqueta: "PJ c/ G+A" },
-  { clave: "ta", etiqueta: "TA" },
-  { clave: "tr", etiqueta: "TR" },
-  { clave: "primerGolEquipo", etiqueta: "1º gol equipo" },
-  { clave: "pctGaEquipo", etiqueta: "% G+A equipo", formato: fmtPorcentaje },
-  { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt },
+  { clave: "pj", etiqueta: "PJ", glosario: "Partidos jugados" },
+  { clave: "g", etiqueta: "G", glosario: "Goles convertidos" },
+  { clave: "a", etiqueta: "A", glosario: "Asistencias" },
+  { clave: "ga", etiqueta: "G+A", glosario: "Goles más asistencias" },
+  { clave: "partidosConGa", etiqueta: "PJ c/ G+A", glosario: "Partidos jugados en los que convirtió un gol o dio una asistencia" },
+  { clave: "ta", etiqueta: "TA", glosario: "Tarjetas amarillas" },
+  { clave: "tr", etiqueta: "TR", glosario: "Tarjetas rojas" },
+  { clave: "primerGolEquipo", etiqueta: "1º gol equipo", glosario: "Veces que convirtió el primer gol del equipo en el partido" },
+  { clave: "pctGaEquipo", etiqueta: "% G+A equipo", formato: fmtPorcentaje, glosario: "Porcentaje de los goles + asistencias del equipo que son suyos" },
+  { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt, glosario: "Minutos jugados (estimados) por cada gol o asistencia" },
 ];
 
 const COLUMNAS_RIVALES = [
   { clave: "rival", etiqueta: "Rival" },
-  { clave: "pj", etiqueta: "PJ" },
-  { clave: "g", etiqueta: "G" },
-  { clave: "e", etiqueta: "E" },
-  { clave: "p", etiqueta: "P" },
-  { clave: "gf", etiqueta: "GF" },
-  { clave: "gc", etiqueta: "GC" },
-  { clave: "dif", etiqueta: "Dif" },
-  { clave: "pctVictorias", etiqueta: "% victorias" },
+  { clave: "pj", etiqueta: "PJ", glosario: "Partidos jugados" },
+  { clave: "g", etiqueta: "G", glosario: "Partidos ganados" },
+  { clave: "e", etiqueta: "E", glosario: "Partidos empatados" },
+  { clave: "p", etiqueta: "P", glosario: "Partidos perdidos" },
+  { clave: "gf", etiqueta: "GF", glosario: "Goles a favor" },
+  { clave: "gc", etiqueta: "GC", glosario: "Goles en contra" },
+  { clave: "dif", etiqueta: "Dif", glosario: "Diferencia de gol (GF menos GC)" },
+  { clave: "pctVictorias", etiqueta: "% victorias", glosario: "Porcentaje de partidos ganados" },
 ];
+
+// desplegable con el glosario completo de una tabla, para abajo del
+// .tabla-wrap. Nada si ninguna columna tiene sigla que explicar.
+function renderLeyendaColumnas(columnas) {
+  const items = columnas.filter((c) => c.glosario);
+  if (items.length === 0) return "";
+  return `
+    <details class="tabla-leyenda">
+      <summary>¿Qué significa cada columna?</summary>
+      <dl>
+        ${items.map((c) => `<dt>${c.etiqueta}</dt><dd>${c.glosario}</dd>`).join("")}
+      </dl>
+    </details>
+  `;
+}
 
 // ---------------- vista Equipo: Historial vs rivales + Gráficos ----------------
 
@@ -798,10 +825,12 @@ function renderEquipo(cont, ids) {
     ])}
     <section id="seccion-historial-rivales">
       <h2>Historial vs rivales</h2>
+      ${descripcionSeccion("El acumulado de todos los enfrentamientos contra cada rival: partidos jugados, resultados y goles.")}
       <div id="historial-rivales-contenido"></div>
     </section>
     <section id="seccion-graficos-equipo">
       <h2>Goles</h2>
+      ${descripcionSeccion("Cómo evolucionaron los goles a favor y en contra partido a partido, de dónde vinieron y en qué momento del partido se convirtieron.")}
       <div id="graficos-equipo-contenido"></div>
     </section>
   `;
@@ -820,6 +849,7 @@ function renderPartidosVista(cont, ids) {
   cont.innerHTML = `
     ${renderTarjetaUltimoPartido()}
     <h2>Partidos</h2>
+    ${descripcionSeccion("El historial completo, partido por partido: resultado, alineación y goles. Tocá uno para ver el detalle.")}
     <div id="partidos-contenido"></div>
   `;
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
@@ -853,6 +883,7 @@ function renderHistorialRivalesContenido(cont, ids) {
         </tbody>
       </table>
     </div>
+    ${renderLeyendaColumnas(COLUMNAS_RIVALES)}
   `;
 
   for (const th of cont.querySelectorAll("th[data-clave]")) {
@@ -913,9 +944,9 @@ function renderGraficosEquipoContenido(cont, ids) {
     return;
   }
   cont.innerHTML = `
-    <div class="grafico-card"><h3>Evolución GF/GC por partido</h3><canvas id="chart-evolucion" role="img" aria-label="Gráfico de evolución de goles a favor y en contra por partido"></canvas></div>
-    <div class="grafico-card"><h3>Fuente de los goles (GF vs GC)</h3><canvas id="chart-fuente" role="img" aria-label="Gráfico de fuente de los goles a favor y en contra"></canvas></div>
-    <div class="grafico-card"><h3>Goles por tiempo (1T vs 2T)</h3><canvas id="chart-tiempo" role="img" aria-label="Gráfico de goles por primer y segundo tiempo"></canvas></div>
+    <div class="grafico-card"><h3>Evolución GF/GC por partido</h3><div class="grafico-contenedor"><canvas id="chart-evolucion" role="img" aria-label="Gráfico de evolución de goles a favor y en contra por partido"></canvas></div></div>
+    <div class="grafico-card"><h3>Fuente de los goles (GF vs GC)</h3><div class="grafico-contenedor"><canvas id="chart-fuente" role="img" aria-label="Gráfico de fuente de los goles a favor y en contra"></canvas></div></div>
+    <div class="grafico-card"><h3>Goles por tiempo (1T vs 2T)</h3><div class="grafico-contenedor"><canvas id="chart-tiempo" role="img" aria-label="Gráfico de goles por primer y segundo tiempo"></canvas></div></div>
   `;
   dibujarEvolucion(cont.querySelector("#chart-evolucion"), evolucionGfGc(estado.data, ids), fmtFechaISO);
   dibujarFuenteGoles(cont.querySelector("#chart-fuente"), fuentePorTipoGol(estado.data, ids));
@@ -934,18 +965,22 @@ function renderJugadores(cont, ids) {
     ])}
     <section id="seccion-tabla-jugadores">
       <h2>Jugadores</h2>
+      ${descripcionSeccion("Estadísticas acumuladas de cada jugador en los partidos filtrados. Tocá un encabezado de columna para ordenar por ese dato, o el nombre de un jugador para ver su ficha.")}
       <div id="tabla-jugadores-contenido"></div>
     </section>
     <section id="seccion-graficos-jugadores">
       <h2>Gráficos</h2>
+      ${descripcionSeccion("Ranking de los jugadores más determinantes, por goles y asistencias.")}
       <div id="graficos-jugadores-contenido"></div>
     </section>
     <section id="seccion-duos">
       <h2>Dúos asistidor → goleador</h2>
+      ${descripcionSeccion("Qué combinaciones de pase y definición se repitieron más: quién asistió a quién, y cuántas veces.")}
       <div id="duos-contenido"></div>
     </section>
     <section id="seccion-ficha">
       <h2>Ficha de jugador</h2>
+      ${descripcionSeccion("Elegí un jugador para ver, partido por partido, en qué goles y asistencias participó.")}
       <div id="ficha-selector"></div>
       <div id="ficha-contenido"></div>
     </section>
@@ -986,6 +1021,7 @@ function renderTablaJugadoresContenido(cont, ids) {
         </tbody>
       </table>
     </div>
+    ${renderLeyendaColumnas(COLUMNAS_JUGADORES)}
   `;
 
   // re-renderiza solo esta sección (no toda la vista): así ordenar no reinicia
@@ -1008,7 +1044,8 @@ function renderTablaJugadoresContenido(cont, ids) {
 }
 
 function thOrdenable(col, orden) {
-  return `<th data-clave="${col.clave}"${ariaSort(col, orden)}>${col.etiqueta}</th>`;
+  const contenido = col.glosario ? `<abbr title="${col.glosario}">${col.etiqueta}</abbr>` : col.etiqueta;
+  return `<th data-clave="${col.clave}"${ariaSort(col, orden)}>${contenido}</th>`;
 }
 
 function ariaSort(col, orden) {
@@ -1090,7 +1127,7 @@ function renderGraficoJugadoresContenido(cont, ids) {
     return;
   }
   cont.innerHTML = `
-    <div class="grafico-card"><h3>Ranking goleadores y G+A</h3><canvas id="chart-ranking" role="img" aria-label="Gráfico de ranking de goleadores y goles más asistencias"></canvas></div>
+    <div class="grafico-card"><h3>Ranking goleadores y G+A</h3><div class="grafico-contenedor grafico-contenedor-ranking"><canvas id="chart-ranking" role="img" aria-label="Gráfico de ranking de goleadores y goles más asistencias"></canvas></div></div>
   `;
   dibujarRanking(cont.querySelector("#chart-ranking"), filas);
 }

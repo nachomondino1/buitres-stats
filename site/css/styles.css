@@ -228,16 +228,26 @@ header.app-header h1 {
   padding: var(--espacio);
   background: var(--color-bg-elevado);
   border-bottom: 1px solid var(--color-borde);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.5rem;
+  position: relative;
   /* reserva el alto aprox. de los controles ya poblados: sin esto, .filtros y
      nav.tabs arrancan casi vacíos y "empujan" todo lo de abajo de golpe
      cuando se construyen (el mayor causante de Cumulative Layout Shift medido
      con Lighthouse, ver DECISIONS.md). En desktop el valor es generoso a
      propósito: mejor que sobre un poco a que quede corto y siga empujando. */
   min-height: 4.5rem;
+}
+
+/* el botón "Filtros" colapsable solo existe visualmente en mobile (ver media
+   query de 600px); en desktop .filtros-panel ya se ve entero siempre. */
+.boton-filtros-toggle {
+  display: none;
+}
+
+.filtros-panel {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
 }
 
 .filtro-campo {
@@ -317,12 +327,6 @@ header.app-header h1 {
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.filtro-dropdown-panel .input-busqueda {
-  width: 100%;
-  max-width: none;
-  margin-bottom: 0.5rem;
 }
 
 .filtro-chips-lista {
@@ -733,6 +737,45 @@ thead th[aria-sort="descending"]::after {
   content: " \25BC";
 }
 
+/* sigla con glosario (G, PJ, TA...): subrayado punteado nativo de <abbr>,
+   para que se note que hay un significado atrás (hover en desktop) sin
+   agregar iconos ni texto extra a cada encabezado. */
+thead th abbr {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--color-texto-tenue);
+  cursor: help;
+}
+
+/* el hover de <abbr> no sirve en mobile (no hay mouse): este desplegable
+   deja el glosario completo siempre accesible con un tap, debajo de la
+   tabla. Colapsado por default para no sumar ruido visual. */
+.tabla-leyenda {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+}
+
+.tabla-leyenda summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tabla-leyenda dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.6rem;
+  margin: 0.5rem 0 0;
+}
+
+.tabla-leyenda dt {
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
+.tabla-leyenda dd {
+  margin: 0;
+}
+
 /* primera columna fija en mobile (nombre de jugador / fecha de partido) */
 td:first-child,
 th:first-child {
@@ -827,8 +870,26 @@ tbody tr:hover td {
   font-size: 0.95rem;
 }
 
-.grafico-card canvas {
-  max-height: 320px;
+/* alto fijo vía contenedor + Chart.js con maintainAspectRatio:false (ver
+   charts.js): así el gráfico no se aplasta cuando el ancho disponible es
+   chico (mobile) — antes el alto salía de ancho/aspectRatio y quedaba
+   ilegible en pantallas angostas. */
+.grafico-contenedor {
+  position: relative;
+  height: 260px;
+}
+
+.grafico-contenedor-ranking {
+  height: 340px; /* hasta 10 jugadores en el eje y, necesita más alto */
+}
+
+@media (max-width: 600px) {
+  .grafico-contenedor {
+    height: 230px;
+  }
+  .grafico-contenedor-ranking {
+    height: 360px;
+  }
 }
 
 /* ---------- estados ---------- */
@@ -910,6 +971,15 @@ main section + section {
   border-top: 1px solid var(--color-borde);
 }
 
+/* línea chica debajo del <h2> de una sección explicando qué se va a ver
+   (pedido de la usuaria): discreta a propósito, no compite con el título. */
+.seccion-descripcion {
+  margin: 0.2rem 0 1rem;
+  max-width: 60ch;
+  color: var(--color-texto-tenue);
+  font-size: 0.85rem;
+}
+
 .ficha-encabezado {
   display: flex;
   align-items: center;
@@ -922,26 +992,80 @@ main section + section {
   font-size: 0.85rem;
 }
 
-.input-busqueda {
-  width: 100%;
-  max-width: 240px;
-}
-
 @media (max-width: 600px) {
+  /* "menos es más" (pedido de la usuaria): en vez de un bloque fijo de ~19rem
+     con todos los controles siempre desplegados, acá solo vive un botón
+     chico y sticky; al tocarlo se abre .filtros-panel como un desplegable
+     flotante que no empuja el resto del contenido. */
   .filtros {
+    min-height: unset;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 15;
+  }
+  .boton-filtros-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    border: none;
+    background: var(--color-bg-elevado);
+    color: var(--color-texto);
+    padding: 0.7rem var(--espacio);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .filtros-toggle-icono {
+    color: var(--color-texto-tenue);
+    font-size: 0.75rem;
+    transition: transform 0.15s ease;
+  }
+  .filtros.filtros-abierto .filtros-toggle-icono {
+    transform: rotate(180deg);
+  }
+  .filtros-badge {
+    background: var(--color-acento);
+    color: var(--color-acento-texto);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.05rem 0.45rem;
+    min-width: 1.1rem;
+    text-align: center;
+  }
+  .filtros-panel {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
     flex-direction: column;
-    min-height: 19rem; /* acá los filtro-campo se apilan: el alto final es mucho mayor */
+    align-items: stretch;
+    gap: 1rem;
+    background: var(--color-bg-elevado);
+    border-bottom: 1px solid var(--color-borde);
+    padding: var(--espacio);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  }
+  .filtros.filtros-abierto .filtros-panel {
+    display: flex;
   }
   /* el <select> de Tipo se estira solo al 100% de .filtro-campo (es un bloque
-     dentro de un flex column con align-items:stretch); el <summary> de Rival
-     y Resultado es inline-flex y no hereda eso, así que hay que pedirlo a
-     mano para que las tres listas midan lo mismo apiladas en mobile. */
+     dentro de un flex column con align-items:stretch); el <summary> de
+     Resultado es inline-flex y no hereda eso, así que hay que pedirlo a mano
+     para que los campos midan lo mismo apilados en mobile. */
   .filtro-dropdown summary {
     width: 100%;
     justify-content: space-between;
   }
   .filtro-dropdown-panel {
     max-width: calc(100vw - 2rem);
+  }
+  main section[id] {
+    scroll-margin-top: 3.2rem;
   }
 
   /* pestañas fijas abajo (como cualquier app nativa): en el celular, que es

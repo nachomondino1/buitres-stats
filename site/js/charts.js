@@ -18,10 +18,37 @@ function redibujar(canvas, config) {
   return instancia;
 }
 
-const opcionesComunes = {
-  responsive: true,
-  plugins: { legend: { position: "bottom" } },
-};
+// < 601px ≈ el mismo corte que usa el CSS para "mobile" (ver styles.css).
+// Chart.js no tiene media queries propias: hay que leer el viewport a mano
+// cada vez que se dibuja, para achicar fuentes/leyenda en pantallas chicas.
+function esMobile() {
+  return window.matchMedia("(max-width: 600px)").matches;
+}
+
+// maintainAspectRatio:false a propósito: por default Chart.js calcula el
+// alto del canvas como ancho/aspectRatio (≈2), y en mobile el ancho
+// disponible es tan chico que el gráfico quedaba aplastado (poca altura,
+// ilegible). Con esto en false, el canvas ocupa el alto fijo del
+// contenedor (.grafico-contenedor en el CSS), que es parejo sin importar
+// el ancho de la pantalla — pedido de la usuaria, gráficos en mobile.
+function opcionesComunes() {
+  const mobile = esMobile();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: { boxWidth: mobile ? 12 : 16, font: { size: mobile ? 11 : 12 } },
+      },
+    },
+  };
+}
+
+function ejeTicks(extra = {}) {
+  const mobile = esMobile();
+  return { font: { size: mobile ? 10 : 11 }, ...extra };
+}
 
 export function dibujarEvolucion(canvas, evolucion, fmtFecha) {
   redibujar(canvas, {
@@ -33,7 +60,13 @@ export function dibujarEvolucion(canvas, evolucion, fmtFecha) {
         { label: "GC", data: evolucion.map((e) => e.gc), borderColor: COLOR_GC, backgroundColor: COLOR_GC, tension: 0.2 },
       ],
     },
-    options: { ...opcionesComunes, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+    options: {
+      ...opcionesComunes(),
+      scales: {
+        x: { ticks: ejeTicks() },
+        y: { beginAtZero: true, ticks: ejeTicks({ precision: 0 }) },
+      },
+    },
   });
 }
 
@@ -44,7 +77,7 @@ export function dibujarRanking(canvas, filasJugadores) {
     .slice(0, 10);
 
   if (top.length === 0) {
-    redibujar(canvas, { type: "bar", data: { labels: [], datasets: [] }, options: opcionesComunes });
+    redibujar(canvas, { type: "bar", data: { labels: [], datasets: [] }, options: opcionesComunes() });
     return;
   }
 
@@ -58,11 +91,11 @@ export function dibujarRanking(canvas, filasJugadores) {
       ],
     },
     options: {
-      ...opcionesComunes,
+      ...opcionesComunes(),
       indexAxis: "y",
       scales: {
-        x: { beginAtZero: true, ticks: { precision: 0 }, stacked: true },
-        y: { stacked: true },
+        x: { beginAtZero: true, ticks: ejeTicks({ precision: 0 }), stacked: true },
+        y: { stacked: true, ticks: ejeTicks() },
       },
     },
   });
@@ -79,7 +112,10 @@ export function dibujarFuenteGoles(canvas, fuentePorTipo) {
         { label: "GC", data: fuentes.map((f) => fuentePorTipo.GC[f] ?? 0), backgroundColor: COLOR_GC },
       ],
     },
-    options: { ...opcionesComunes, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+    options: {
+      ...opcionesComunes(),
+      scales: { x: { ticks: ejeTicks() }, y: { beginAtZero: true, ticks: ejeTicks({ precision: 0 }) } },
+    },
   });
 }
 
@@ -93,6 +129,9 @@ export function dibujarGolesPorTiempo(canvas, { gf1t, gc1t, gf2t, gc2t }) {
         { label: "GC", data: [gc1t, gc2t], backgroundColor: COLOR_GC },
       ],
     },
-    options: { ...opcionesComunes, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+    options: {
+      ...opcionesComunes(),
+      scales: { x: { ticks: ejeTicks() }, y: { beginAtZero: true, ticks: ejeTicks({ precision: 0 }) } },
+    },
   });
 }
