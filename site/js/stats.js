@@ -493,3 +493,156 @@ export function datosCuriosos(data, idsPartidos) {
     partidoMasDesparejo: partidoMasDesparejo(partidos),
   };
 }
+
+// ---------------- logros, rankings y comparador (vista Jugadores) ----------------
+// Pensado para los dos ejes que pidió la usuaria: que un jugador se sienta
+// "pro" (ficha con logros/badges) y que haya competencia sana entre amigos
+// (rankings con 2do/3er puesto, comparador lado a lado). No hay noción de
+// "equipos" dentro de un partido en los datos (todos los partidos son
+// Buitres vs. un rival externo), así que "comparar 2 jugadores" es una
+// comparación de estadísticas, no un historial de enfrentamientos entre ellos.
+
+/** Top N de tablaJugadores por una columna numérica (de mayor a menor),
+ * excluyendo a quienes están en 0 (no tiene sentido un "3er puesto" con 0
+ * goles solo porque nadie más metió). Pensado para mostrar 2do/3er puesto
+ * además del líder que ya muestra jugadoresDestacados(). */
+export function topJugadoresPorCategoria(data, idsPartidos, clave, n = 3) {
+  return tablaJugadores(data, idsPartidos)
+    .filter((f) => f[clave] > 0)
+    .sort((a, b) => b[clave] - a[clave] || a.nombre_mostrar.localeCompare(b.nombre_mostrar))
+    .slice(0, n)
+    .map((f) => ({ idJugador: f.id_jugador, nombre: f.nombre_mostrar, valor: f[clave] }));
+}
+
+// fila de tablaJugadores para idJugador, o una fila en cero si no jugó
+// ningún partido del set filtrado (tablaJugadores lo omite directamente,
+// pero el comparador necesita poder mostrar "0" en vez de hacer desaparecer
+// al jugador elegido).
+function filaJugadorOCero(data, idsPartidos, idJugador) {
+  const fila = tablaJugadores(data, idsPartidos).find((f) => f.id_jugador === idJugador);
+  if (fila) return fila;
+  const jugador = data.jugadores.find((j) => j.id_jugador === idJugador);
+  return {
+    id_jugador: idJugador,
+    nombre_mostrar: jugador?.nombre_mostrar ?? idJugador,
+    pj: 0, g: 0, a: 0, ga: 0, ta: 0, tr: 0,
+    primerGolEquipo: 0, partidosConGa: 0, pctGaEquipo: null, minPorGa: null,
+  };
+}
+
+/** Comparador de 2 jugadores lado a lado (vista Jugadores → Comparar): la
+ * misma fila que tablaJugadores para cada uno, en cero si no jugó nada en el
+ * set filtrado. La UI decide, fila por fila, quién "va ganando". */
+export function compararJugadores(data, idsPartidos, idJugadorA, idJugadorB) {
+  return {
+    a: filaJugadorOCero(data, idsPartidos, idJugadorA),
+    b: filaJugadorOCero(data, idsPartidos, idJugadorB),
+  };
+}
+
+/** Rival contra el que un jugador metió más goles ("rival favorito"). Mínimo
+ * 2 goles a un mismo rival para que el dato diga algo — con 1 goleó a medio
+ * fixture y no significa nada. Empate en cantidad: se queda con el primero
+ * en orden alfabético del rival, para que el resultado sea determinístico. */
+export function jugadorRivalFavorito(data, idsPartidos, idJugador) {
+  const partidoPorId = new Map(data.partidos.map((p) => [p.id_partido, p]));
+  const conteo = new Map();
+  for (const gol of data.goles) {
+    if (!idsPartidos.has(gol.id_partido) || gol.tipo_gol !== "GF" || gol.id_goleador !== idJugador) continue;
+    const rival = partidoPorId.get(gol.id_partido)?.rival;
+    if (!rival) continue;
+    conteo.set(rival, (conteo.get(rival) ?? 0) + 1);
+  }
+  let mejor = null;
+  for (const [rival, goles] of conteo) {
+    if (!mejor || goles > mejor.goles || (goles === mejor.goles && rival.localeCompare(mejor.rival) < 0)) {
+      mejor = { rival, goles };
+    }
+  }
+  return mejor && mejor.goles >= 2 ? mejor : null;
+}
+
+// partidos del set filtrado en los que jugó idJugador (según alineaciones),
+// ordenados por fecha asc, cada uno con si convirtió (>=1 gol GF) o no. Base
+// común de rachaGoleadoraJugador() y jugadorEnRacha().
+function partidosJugadosOrdenados(data, idsPartidos, idJugador) {
+  const idsJugados = new Set(
+    data.alineaciones.filter((al) => idsPartidos.has(al.id_partido) && al.id_jugador === idJugador).map((al) => al.id_partido)
+  );
+  const idsConGol = new Set(
+    data.goles.filter((g) => g.tipo_gol === "GF" && g.id_goleador === idJugador && idsJugados.has(g.id_partido)).map((g) => g.id_partido)
+  );
+  return data.partidos
+    .filter((p) => idsJugados.has(p.id_partido))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((p) => ({ fecha: p.fecha, marco: idsConGol.has(p.id_partido) }));
+}
+
+/** Racha goleadora de un jugador (partidos jugados seguidos convirtiendo al
+ * menos un gol): la actual (puede ser null si el último partido que jugó no
+ * convirtió) y la más larga histórica, con su rango de fechas. Mismo criterio
+ * que rachasHistoricas() pero sobre "convirtió sí/no" en vez de G/E/P, y
+ * reutiliza rachaMasLarga() pasándole un resultado sintético "SI"/"NO". */
+export function rachaGoleadoraJugador(data, idsPartidos, idJugador) {
+  const jugados = partidosJugadosOrdenados(data, idsPartidos, idJugador);
+
+  let actual = null;
+  for (let i = jugados.length - 1; i >= 0; i--) {
+    if (!jugados[i].marco) break;
+    actual = (actual ?? 0) + 1;
+  }
+
+  const sintetico = jugados.map((j) => ({ fecha: j.fecha, resultado: j.marco ? "SI" : "NO" }));
+  const mejor = rachaMasLarga(sintetico, (r) => r === "SI");
+
+  return { actual: actual ? { cantidad: actual } : null, mejor };
+}
+
+/** El jugador con la racha goleadora ACTUAL más larga del set filtrado (para
+ * la tarjeta "Jugador en racha" de Resumen). Mínimo 2 partidos seguidos
+ * convirtiendo — "1" es simplemente "metió en el último partido que jugó",
+ * no una racha. Empate: gana el de nombre_mostrar alfabéticamente primero. */
+export function jugadorEnRacha(data, idsPartidos) {
+  let mejor = null;
+  for (const jugador of data.jugadores) {
+    const { actual } = rachaGoleadoraJugador(data, idsPartidos, jugador.id_jugador);
+    if (!actual) continue;
+    if (!mejor || actual.cantidad > mejor.cantidad || (actual.cantidad === mejor.cantidad && jugador.nombre_mostrar.localeCompare(mejor.nombre) < 0)) {
+      mejor = { idJugador: jugador.id_jugador, nombre: jugador.nombre_mostrar, cantidad: actual.cantidad };
+    }
+  }
+  return mejor && mejor.cantidad >= 2 ? mejor : null;
+}
+
+// Umbrales de los logros/badges: elegidos mirando los datos reales de hoy
+// (17 partidos, 108 goles entre 29 jugadores) para que varios jugadores los
+// puedan alcanzar, no solo el líder histórico — si el dataset crece mucho,
+// recalibrar acá (son los únicos números "mágicos" de todo este bloque).
+export const UMBRALES_LOGROS = {
+  goleador: 3,
+  asistidor: 2,
+  figura: 5, // G+A
+  inoxidable: 12, // PJ
+  picante: 3, // amarillas
+  enRacha: 2, // partidos seguidos convirtiendo
+};
+
+/** Logros/badges ganados por un jugador en el set filtrado, para la ficha.
+ * Cada uno con ícono + etiqueta + detalle (el número que lo justifica).
+ * Devuelve [] si no ganó ninguno (jugador sin logros todavía: resultado
+ * válido, no un error, igual que el resto de este archivo). */
+export function logrosJugador(data, idsPartidos, idJugador) {
+  const fila = filaJugadorOCero(data, idsPartidos, idJugador);
+  const racha = rachaGoleadoraJugador(data, idsPartidos, idJugador).actual;
+  const u = UMBRALES_LOGROS;
+  const logros = [];
+
+  if (fila.g >= u.goleador) logros.push({ icono: "⚽", etiqueta: "Goleador", detalle: `${fila.g} goles` });
+  if (fila.a >= u.asistidor) logros.push({ icono: "🎯", etiqueta: "Asistidor", detalle: `${fila.a} asistencias` });
+  if (fila.ga >= u.figura) logros.push({ icono: "🌟", etiqueta: "Figura", detalle: `${fila.ga} G+A` });
+  if (fila.pj >= u.inoxidable) logros.push({ icono: "🦾", etiqueta: "Inoxidable", detalle: `${fila.pj} partidos jugados` });
+  if (fila.ta >= u.picante) logros.push({ icono: "🟨", etiqueta: "Picante", detalle: `${fila.ta} amarillas` });
+  if (racha && racha.cantidad >= u.enRacha) logros.push({ icono: "🔥", etiqueta: "En racha", detalle: `${racha.cantidad} partidos seguidos convirtiendo` });
+
+  return logros;
+}

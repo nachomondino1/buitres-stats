@@ -3,6 +3,8 @@ import { test } from "node:test";
 
 import {
   MINUTOS_PARTIDO,
+  UMBRALES_LOGROS,
+  compararJugadores,
   datosCuriosos,
   duosAsistidorGoleador,
   evolucionGfGc,
@@ -11,11 +13,16 @@ import {
   fuentePorTipoGol,
   golesPorTiempo,
   historialRivales,
+  jugadorEnRacha,
+  jugadorRivalFavorito,
   jugadoresDestacados,
+  logrosJugador,
   partidosConDetalle,
+  rachaGoleadoraJugador,
   rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
+  topJugadoresPorCategoria,
   ultimoPartido,
   ultimosResultados,
 } from "./stats.js";
@@ -340,4 +347,118 @@ test("ultimoPartido: el de fecha más nueva, con goleadores/asistidores agrupado
   assert.equal(u.id_partido, 4); // 2026-01-31 es el más nuevo
   assert.deepEqual(u.goleadores, [{ nombre: "Bruno", cantidad: 2 }, { nombre: "Carla", cantidad: 1 }]);
   assert.deepEqual(u.asistidores, [{ nombre: "Carla", cantidad: 2 }]);
+});
+
+// ---------------- logros, rankings y comparador ----------------
+// Fixture separado de DATA: necesito una secuencia de partidos por jugador
+// pensada a propósito para ejercitar rachas (corte, empate, nunca jugó), así
+// que reusar DATA (pensado para otra cosa) metería partidos de más y rompería
+// sus asserts existentes.
+
+const DATA2 = {
+  jugadores: [
+    { id_jugador: "J01", nombre: "Ana", apellido: null, apodo: null, origen: null, nombre_mostrar: "Ana" },
+    { id_jugador: "J02", nombre: "Bruno", apellido: null, apodo: null, origen: null, nombre_mostrar: "Bruno" },
+    { id_jugador: "J03", nombre: "Carla", apellido: null, apodo: null, origen: null, nombre_mostrar: "Carla" },
+    { id_jugador: "J04", nombre: "Dario", apellido: null, apodo: null, origen: null, nombre_mostrar: "Dario" }, // nunca jugó
+  ],
+  partidos: [
+    { id_partido: 101, fecha: "2026-02-01", hora: null, tipo: "Amistoso", rival: "Rival X", gf_1t: 1, gc_1t: 0, gf_2t: 1, gc_2t: 0, gf: 2, gc: 0, resultado: "G", link_video: null, goles_completos: true },
+    { id_partido: 102, fecha: "2026-02-08", hora: null, tipo: "Amistoso", rival: "Rival Y", gf_1t: 1, gc_1t: 0, gf_2t: 0, gc_2t: 0, gf: 1, gc: 0, resultado: "G", link_video: null, goles_completos: true },
+    { id_partido: 103, fecha: "2026-02-15", hora: null, tipo: "Amistoso", rival: "Rival X", gf_1t: 1, gc_1t: 0, gf_2t: 1, gc_2t: 0, gf: 2, gc: 0, resultado: "G", link_video: null, goles_completos: true },
+    { id_partido: 104, fecha: "2026-02-22", hora: null, tipo: "Amistoso", rival: "Rival Z", gf_1t: 1, gc_1t: 0, gf_2t: 0, gc_2t: 0, gf: 1, gc: 0, resultado: "G", link_video: null, goles_completos: true },
+  ],
+  alineaciones: [
+    { id_partido: 101, id_jugador: "J01", amarillas: 0, rojas: 0 },
+    { id_partido: 101, id_jugador: "J02", amarillas: 1, rojas: 0 },
+    { id_partido: 102, id_jugador: "J01", amarillas: 0, rojas: 0 },
+    { id_partido: 102, id_jugador: "J02", amarillas: 0, rojas: 0 },
+    { id_partido: 103, id_jugador: "J01", amarillas: 0, rojas: 0 },
+    { id_partido: 103, id_jugador: "J02", amarillas: 1, rojas: 0 },
+    { id_partido: 104, id_jugador: "J02", amarillas: 1, rojas: 0 },
+    { id_partido: 104, id_jugador: "J03", amarillas: 0, rojas: 0 }, // jugó pero nunca metió ni asistió
+  ],
+  goles: [
+    { id_partido: 101, tipo_gol: "GF", nro_gol: 1, id_goleador: "J01", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "1-0", link: null },
+    { id_partido: 101, tipo_gol: "GF", nro_gol: 2, id_goleador: "J02", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "2-0", link: null },
+    { id_partido: 102, tipo_gol: "GF", nro_gol: 1, id_goleador: "J01", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "1-0", link: null },
+    // partido 103: Ana mete de nuevo (2do gol vs Rival X -> rival favorito), Bruno corta su racha anterior y arranca una nueva
+    { id_partido: 103, tipo_gol: "GF", nro_gol: 1, id_goleador: "J01", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "1-0", link: null },
+    { id_partido: 103, tipo_gol: "GF", nro_gol: 2, id_goleador: "J02", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "2-0", link: null },
+    { id_partido: 104, tipo_gol: "GF", nro_gol: 1, id_goleador: "J02", id_asistidor: null, fuente: "Sin dato", marcador_tras_gol: "1-0", link: null },
+  ],
+};
+const TODOS2 = new Set(DATA2.partidos.map((p) => p.id_partido));
+
+test("topJugadoresPorCategoria: top N desc, excluye ceros, empate por nombre", () => {
+  // Ana y Bruno meten 3 goles cada uno; Carla y Dario quedan afuera (0 goles)
+  const top = topJugadoresPorCategoria(DATA2, TODOS2, "g", 3);
+  assert.deepEqual(top, [
+    { idJugador: "J01", nombre: "Ana", valor: 3 },
+    { idJugador: "J02", nombre: "Bruno", valor: 3 },
+  ]);
+});
+
+test("compararJugadores: fila real para cada uno, en cero si no jugó nada", () => {
+  const { a, b } = compararJugadores(DATA2, TODOS2, "J01", "J04");
+  assert.equal(a.g, 3);
+  assert.equal(b.nombre_mostrar, "Dario");
+  assert.equal(b.pj, 0);
+  assert.equal(b.g, 0);
+});
+
+test("jugadorRivalFavorito: rival con más goles, mínimo 2, ignora si no llega", () => {
+  assert.deepEqual(jugadorRivalFavorito(DATA2, TODOS2, "J01"), { rival: "Rival X", goles: 2 });
+  assert.equal(jugadorRivalFavorito(DATA2, TODOS2, "J03"), null); // Carla nunca metió
+  assert.equal(jugadorRivalFavorito(DATA2, TODOS2, "J04"), null); // Dario nunca jugó
+});
+
+test("rachaGoleadoraJugador: actual se corta si el último partido jugado no convirtió", () => {
+  // Ana metió en sus 3 partidos jugados (101,102,103): racha actual y mejor = 3
+  const ana = rachaGoleadoraJugador(DATA2, TODOS2, "J01");
+  assert.deepEqual(ana.actual, { cantidad: 3 });
+  assert.deepEqual(ana.mejor, { cantidad: 3, desde: "2026-02-01", hasta: "2026-02-15" });
+
+  // Bruno: metió(101), no metió(102), metió(103), metió(104) -> racha actual
+  // 2 (103,104), mejor también 2 (el corte en 102 impide una racha de 3)
+  const bruno = rachaGoleadoraJugador(DATA2, TODOS2, "J02");
+  assert.deepEqual(bruno.actual, { cantidad: 2 });
+  assert.deepEqual(bruno.mejor, { cantidad: 2, desde: "2026-02-15", hasta: "2026-02-22" });
+
+  // Carla jugó un partido y no metió: ninguna racha
+  const carla = rachaGoleadoraJugador(DATA2, TODOS2, "J03");
+  assert.equal(carla.actual, null);
+  assert.equal(carla.mejor, null);
+
+  // Dario nunca jugó: ninguna racha
+  const dario = rachaGoleadoraJugador(DATA2, TODOS2, "J04");
+  assert.equal(dario.actual, null);
+  assert.equal(dario.mejor, null);
+});
+
+test("jugadorEnRacha: el de racha ACTUAL más larga del set filtrado", () => {
+  // Ana (racha actual 3) le gana a Bruno (racha actual 2)
+  assert.deepEqual(jugadorEnRacha(DATA2, TODOS2), { idJugador: "J01", nombre: "Ana", cantidad: 3 });
+});
+
+test("jugadorEnRacha: null si nadie llega al mínimo de 2", () => {
+  // en el único partido jugado, nadie metió 2 seguidos todavía
+  assert.equal(jugadorEnRacha(DATA2, new Set([101])), null);
+});
+
+test("logrosJugador: solo los badges cuyo umbral se cumple, en orden fijo", () => {
+  // Bruno: 3 goles (>=UMBRALES_LOGROS.goleador), 3 amarillas (>=picante),
+  // racha actual 2 (>=enRacha); no llega a figura (G+A) ni a inoxidable (PJ).
+  assert.equal(UMBRALES_LOGROS.goleador, 3);
+  const logros = logrosJugador(DATA2, TODOS2, "J02");
+  assert.deepEqual(logros, [
+    { icono: "⚽", etiqueta: "Goleador", detalle: "3 goles" },
+    { icono: "🟨", etiqueta: "Picante", detalle: "3 amarillas" },
+    { icono: "🔥", etiqueta: "En racha", detalle: "2 partidos seguidos convirtiendo" },
+  ]);
+});
+
+test("logrosJugador: [] para un jugador sin ningún logro todavía", () => {
+  assert.deepEqual(logrosJugador(DATA2, TODOS2, "J03"), []);
+  assert.deepEqual(logrosJugador(DATA2, TODOS2, "J04"), []);
 });
