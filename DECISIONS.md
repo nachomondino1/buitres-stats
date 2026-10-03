@@ -2,6 +2,43 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Logros, rankings, comparador y rival favorito (pedido de la usuaria)
+
+La usuaria pidió ideas de otras apps de fútbol amateur con foco en que los
+jugadores se sientan "pro" (ego) y en competencia sana entre amigos, e
+implementar las que se pudieran. Se agregó, 100% calculado client-side sobre
+`data.json` (sin tocar el pipeline de Python ni el schema):
+
+- **Ficha de jugador "tipo pro"**: tarjeta de cabecera (avatar, PJ/G/A/G+A) +
+  logros/badges ganados + "rival favorito" (contra quién metió más goles),
+  arriba de la tabla partido a partido que ya existía.
+- **Logros/badges automáticos** (`logrosJugador` en `stats.js`): Goleador,
+  Asistidor, Figura, Inoxidable, Picante y En racha, con umbrales elegidos
+  mirando los datos reales de hoy (17 partidos, 108 goles entre 29 jugadores)
+  para que varios jugadores los puedan alcanzar, no solo el líder histórico
+  (`UMBRALES_LOGROS`, recalibrar ahí si el dataset crece mucho).
+- **Racha goleadora individual** (`rachaGoleadoraJugador`): mismo espíritu que
+  `rachasHistoricas()` (la de equipo) pero por jugador, sobre "convirtió sí/no"
+  en vez de G/E/P.
+- **Rankings con 2do/3er puesto** en "Jugadores destacados" de Resumen, no
+  solo el líder (`topJugadoresPorCategoria`) — más competencia visual sin
+  crear una sección nueva.
+- **Comparador de 2 jugadores** (`compararJugadores`, sección "Comparar" en
+  la vista Jugadores): cierra el ítem que ya estaba en `BACKLOG.md`. Es una
+  comparación de **estadísticas** lado a lado, no un historial de
+  enfrentamientos directos entre ellos — Buitres no arma equipos internos
+  (todo partido es Buitres vs. un rival externo), así que esa noción no existe
+  en los datos. Estado del comparador a propósito NO vive en la URL (a
+  diferencia de filtros/orden/ficha): impacto/esfuerzo no lo amerita para una
+  comparación que se arma y se tira.
+
+**Descartado, no por falta de interés sino por arquitectura**: votación de MVP
+por partido y predicciones/polla pre-partido. El sitio es estático y de solo
+lectura (`fetch("data/data.json")`, sin backend, sin cuentas, sin forms) —
+cualquiera de las dos necesita infraestructura real de escritura (base de
+datos, auth) que hoy no existe. Quedan anotadas en `BACKLOG.md` por si en
+algún momento se decide agregar ese backend.
+
 ## Medición de visitas: GoatCounter
 
 Se agregó un contador de visitas (`site/index.html`) para saber cuánto se usa el

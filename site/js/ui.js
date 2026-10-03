@@ -1,6 +1,7 @@
 // DOM + estado de filtros <-> URL. Toda la lógica de cálculo vive en stats.js
 // (sin DOM); este archivo solo lee esos resultados y los pinta.
 import {
+  compararJugadores,
   datosCuriosos,
   duosAsistidorGoleador,
   evolucionGfGc,
@@ -9,11 +10,14 @@ import {
   fuentePorTipoGol,
   golesPorTiempo,
   historialRivales,
-  jugadoresDestacados,
+  jugadorEnRacha,
+  jugadorRivalFavorito,
+  logrosJugador,
   partidosConDetalle,
   rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
+  topJugadoresPorCategoria,
   ultimoPartido,
   ultimosResultados,
 } from "./stats.js";
@@ -73,6 +77,10 @@ const estado = {
     rivales: { columna: "pj", direccion: "desc" },
   },
   jugadorFichaId: null,
+  // selección del comparador de 2 jugadores: a propósito NO vive en la URL
+  // (a diferencia de filtros/orden/ficha) — impacto/esfuerzo no lo amerita
+  // para una comparación que se arma y se tira, ver DECISIONS.md.
+  comparar: { a: null, b: null },
 };
 
 // 4 vistas. "Partidos" se separó de "Equipo": es el log de partidos en sí
@@ -526,7 +534,9 @@ function renderResumen(cont, ids) {
     ${seccionCuriosos ? `<section class="resumen-bloque">${seccionCuriosos}</section>` : ""}
   `;
   activarScrollASecciones(cont);
-  for (const boton of cont.querySelectorAll(".tarjeta-destacado[data-jugador-id]")) {
+  // selector genérico (no solo ".tarjeta-destacado"): el podio de top 3 agrega
+  // botones de 2do/3er puesto que viven en su propia lista, no en la tarjeta grande.
+  for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
   cont.querySelector("[data-ir-partidos]")?.addEventListener("click", irAPartidos);
@@ -587,36 +597,76 @@ function tarjetaRacha(etiqueta, racha, tono) {
   `;
 }
 
+// categoría de tablaJugadores -> etiqueta/unidad para el podio de "Jugadores
+// destacados". Usa topJugadoresPorCategoria() para el 1ro Y el 2do/3ro (no
+// jugadoresDestacados() para el 1ro): así el líder y el podio comparten el
+// mismo criterio de desempate, en vez de tener dos lógicas que podrían
+// discrepar en un caso de empate.
+const CATEGORIAS_DESTACADOS = [
+  ["g", "Máximo goleador", "goles"],
+  ["a", "Máximo asistidor", "asistencias"],
+  ["ga", "Más influyente", "G+A"],
+  ["pj", "Más partidos jugados", "PJ"],
+];
+
 // "Resumen" tiene que ser un resumen de verdad: no solo números del equipo,
-// también quién se destaca individualmente (pedido de la usuaria). Un valor
-// en 0 no cuenta como "destacado" (jugadoresDestacados() ya filtra eso).
+// también quién se destaca individualmente (pedido de la usuaria), ahora con
+// 2do y 3er puesto además del líder (más "competencia entre amigos" que
+// mostrar solo a uno). Un valor en 0 no cuenta como "destacado".
 function renderJugadoresDestacados(ids) {
-  const d = jugadoresDestacados(estado.data, ids);
-  const items = [
-    ["Máximo goleador", d.goleador, "goles"],
-    ["Máximo asistidor", d.asistidor, "asistencias"],
-    ["Más influyente", d.influyente, "G+A"],
-    ["Más partidos jugados", d.masPartidos, "PJ"],
-  ];
-  if (items.every(([, v]) => !v)) return "";
+  const podios = CATEGORIAS_DESTACADOS.map(([clave, etiqueta, unidad]) => [
+    etiqueta, unidad, topJugadoresPorCategoria(estado.data, ids, clave, 3),
+  ]);
+  const racha = jugadorEnRacha(estado.data, ids);
+  if (podios.every(([, , top]) => top.length === 0) && !racha) return "";
   return `
     <h2>Jugadores destacados</h2>
-    ${descripcionSeccion("Quién lidera cada estadística individual en los partidos filtrados. Tocá una tarjeta para ver la ficha completa de ese jugador.")}
+    ${descripcionSeccion("Quién lidera cada estadística individual en los partidos filtrados, con el 2do y 3er puesto. Tocá un jugador para ver su ficha completa.")}
     <div class="destacados-grid">
-      ${items.map(([etiqueta, v, unidad]) => tarjetaDestacado(etiqueta, v, unidad)).join("")}
+      ${podios.map(([etiqueta, unidad, top]) => tarjetaDestacado(etiqueta, top[0], unidad, top.slice(1))).join("")}
+      ${tarjetaJugadorEnRacha(racha)}
     </div>
   `;
 }
 
-function tarjetaDestacado(etiqueta, v, unidad) {
+function tarjetaDestacado(etiqueta, v, unidad, subrank = []) {
   if (!v) {
     return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
   }
-  return `
+  const tarjeta = `
     <button type="button" class="tarjeta-destacado" data-jugador-id="${v.idJugador}">
       <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
       <span class="tarjeta-destacado-jugador">${avatarHTML(v.nombre)}${v.nombre}</span>
       <span class="tarjeta-destacado-valor">${v.valor} ${unidad}</span>
+    </button>
+  `;
+  if (subrank.length === 0) return tarjeta;
+  // grupo propio (no reusa la clase .tarjeta-destacado) para no heredar su
+  // fondo/borde/padding: acá solo hace falta apilar la tarjeta grande + la
+  // lista chica de 2do/3er puesto como una sola celda del grid.
+  return `<div class="tarjeta-destacado-grupo">${tarjeta}${renderSubrank(subrank)}</div>`;
+}
+
+function renderSubrank(subrank) {
+  const medallas = ["🥈", "🥉"];
+  return `
+    <ul class="tarjeta-destacado-subrank">
+      ${subrank.map((s, i) => `<li><button type="button" data-jugador-id="${s.idJugador}">${medallas[i] ?? "•"} ${s.nombre} · ${s.valor}</button></li>`).join("")}
+    </ul>
+  `;
+}
+
+// jugador con la racha goleadora ACTUAL más larga (ver jugadorEnRacha() en
+// stats.js): a diferencia de las otras 4 tarjetas, no muestra un placeholder
+// "–" si no aplica — con pocos partidos cargados es normal que todavía nadie
+// esté en racha, y no suma nada mostrar eso como un hueco vacío.
+function tarjetaJugadorEnRacha(racha) {
+  if (!racha) return "";
+  return `
+    <button type="button" class="tarjeta-destacado" data-jugador-id="${racha.idJugador}">
+      <span class="tarjeta-destacado-etiqueta">🔥 Jugador en racha</span>
+      <span class="tarjeta-destacado-jugador">${avatarHTML(racha.nombre)}${racha.nombre}</span>
+      <span class="tarjeta-destacado-valor valor-bueno">${racha.cantidad} partidos seguidos convirtiendo</span>
     </button>
   `;
 }
@@ -973,6 +1023,7 @@ function renderJugadores(cont, ids) {
       ["seccion-tabla-jugadores", "Tabla"],
       ["seccion-graficos-jugadores", "Gráficos"],
       ["seccion-duos", "Dúos"],
+      ["seccion-comparar", "Comparar"],
       ["seccion-ficha", "Ficha"],
     ])}
     <section id="seccion-tabla-jugadores">
@@ -990,9 +1041,15 @@ function renderJugadores(cont, ids) {
       ${descripcionSeccion("Qué combinaciones de pase y definición se repitieron más: quién asistió a quién, y cuántas veces.")}
       <div id="duos-contenido"></div>
     </section>
+    <section id="seccion-comparar">
+      <h2>Comparar jugadores</h2>
+      ${descripcionSeccion("Elegí 2 jugadores para ver sus estadísticas lado a lado en los partidos filtrados. Buitres no arma equipos internos, así que esto compara números, no enfrentamientos directos.")}
+      <div id="comparar-selector"></div>
+      <div id="comparar-contenido"></div>
+    </section>
     <section id="seccion-ficha">
       <h2>Ficha de jugador</h2>
-      ${descripcionSeccion("Elegí un jugador para ver, partido por partido, en qué goles y asistencias participó.")}
+      ${descripcionSeccion("Elegí un jugador para ver su carta de stats, logros y, partido por partido, en qué goles y asistencias participó.")}
       <div id="ficha-selector"></div>
       <div id="ficha-contenido"></div>
     </section>
@@ -1001,8 +1058,93 @@ function renderJugadores(cont, ids) {
   renderTablaJugadoresContenido(cont.querySelector("#tabla-jugadores-contenido"), ids);
   renderGraficoJugadoresContenido(cont.querySelector("#graficos-jugadores-contenido"), ids);
   renderDuosContenido(cont.querySelector("#duos-contenido"), ids);
+  renderComparadorSelector(cont.querySelector("#comparar-selector"), ids);
+  renderComparadorContenido(cont.querySelector("#comparar-contenido"), ids);
   renderFichaSelector(cont.querySelector("#ficha-selector"));
   renderFichaContenido(cont.querySelector("#ficha-contenido"), ids);
+}
+
+// ---------------- Comparador de 2 jugadores (lado a lado) ----------------
+// Cierra el ítem de BACKLOG.md "Comparador de 2 jugadores lado a lado". No
+// hay partidos "entre" jugadores (Buitres no arma equipos internos, ver
+// SPEC_buitres_v3.md), así que es una comparación de estadísticas, no un
+// historial de enfrentamientos.
+
+const COLUMNAS_COMPARADOR = [
+  { clave: "pj", etiqueta: "PJ" },
+  { clave: "g", etiqueta: "Goles" },
+  { clave: "a", etiqueta: "Asistencias" },
+  { clave: "ga", etiqueta: "G+A" },
+  { clave: "partidosConGa", etiqueta: "PJ c/ G+A" },
+  { clave: "ta", etiqueta: "Amarillas" },
+  { clave: "tr", etiqueta: "Rojas" },
+];
+
+function renderComparadorSelector(cont, ids) {
+  const jugadores = estado.data.jugadores.slice().sort((a, b) => a.nombre_mostrar.localeCompare(b.nombre_mostrar));
+  const opciones = (seleccionado) => `
+    <option value="">Elegí un jugador…</option>
+    ${jugadores.map((j) => `<option value="${j.id_jugador}" ${j.id_jugador === seleccionado ? "selected" : ""}>${j.nombre_mostrar}</option>`).join("")}
+  `;
+  cont.innerHTML = `
+    <div class="comparador-selectores">
+      <div class="filtro-campo">
+        <label for="comparar-a">Jugador A</label>
+        <select id="comparar-a">${opciones(estado.comparar.a)}</select>
+      </div>
+      <span class="comparador-vs" aria-hidden="true">vs</span>
+      <div class="filtro-campo">
+        <label for="comparar-b">Jugador B</label>
+        <select id="comparar-b">${opciones(estado.comparar.b)}</select>
+      </div>
+    </div>
+  `;
+  cont.querySelector("#comparar-a").addEventListener("change", (e) => {
+    estado.comparar.a = e.target.value || null;
+    renderComparadorContenido(document.getElementById("comparar-contenido"), ids);
+  });
+  cont.querySelector("#comparar-b").addEventListener("change", (e) => {
+    estado.comparar.b = e.target.value || null;
+    renderComparadorContenido(document.getElementById("comparar-contenido"), ids);
+  });
+}
+
+function renderComparadorContenido(cont, ids) {
+  const { a: idA, b: idB } = estado.comparar;
+  if (!idA || !idB) {
+    cont.innerHTML = '<p class="estado-vacio">Elegí 2 jugadores arriba para compararlos.</p>';
+    return;
+  }
+  if (idA === idB) {
+    cont.innerHTML = '<p class="estado-vacio">Elegí 2 jugadores distintos.</p>';
+    return;
+  }
+  const { a, b } = compararJugadores(estado.data, ids, idA, idB);
+  cont.innerHTML = `
+    <div class="tabla-wrap">
+      <table class="comparador-tabla">
+        <thead><tr><th style="text-align:left">${avatarHTML(a.nombre_mostrar)}${a.nombre_mostrar}</th><th>Estadística</th><th style="text-align:right">${b.nombre_mostrar}${avatarHTML(b.nombre_mostrar)}</th></tr></thead>
+        <tbody>
+          ${COLUMNAS_COMPARADOR.map((c) => filaComparador(c, a[c.clave], b[c.clave])).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// cada fila resalta en verde a quien va ganando esa estadística (empate: sin
+// resaltar a ninguno). Pedido de la usuaria: "competencia entre amigos", así
+// que el resultado tiene que saltar a la vista sin leer los números.
+function filaComparador(columna, valorA, valorB) {
+  const aGana = valorA > valorB;
+  const bGana = valorB > valorA;
+  return `
+    <tr>
+      <td class="comparador-valor ${aGana ? "comparador-ganador" : ""}">${valorA}</td>
+      <td class="comparador-etiqueta">${columna.etiqueta}</td>
+      <td class="comparador-valor ${bGana ? "comparador-ganador" : ""}">${valorB}</td>
+    </tr>
+  `;
 }
 
 function renderTablaJugadoresContenido(cont, ids) {
@@ -1104,16 +1246,14 @@ function renderFichaContenido(cont, ids) {
     return;
   }
   const jugador = estado.data.jugadores.find((j) => j.id_jugador === estado.jugadorFichaId);
-  const encabezado = jugador
-    ? `<h3 class="ficha-encabezado">${avatarHTML(jugador.nombre_mostrar)}${jugador.nombre_mostrar}</h3>`
-    : "";
+  const tarjeta = jugador ? renderTarjetaFichaJugador(jugador, ids) : "";
   const partidos = fichaJugador(estado.data, ids, estado.jugadorFichaId);
   if (partidos.length === 0) {
-    cont.innerHTML = `${encabezado}<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no tiene goles ni asistencias en estos filtros.</p>`;
+    cont.innerHTML = `${tarjeta}<p class="estado-vacio">${jugador?.nombre_mostrar ?? "Este jugador"} no tiene goles ni asistencias en estos filtros.</p>`;
     return;
   }
   cont.innerHTML = `
-    ${encabezado}
+    ${tarjeta}
     <div class="tabla-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Rival</th><th>Resultado</th><th style="text-align:left">Participación</th></tr></thead>
@@ -1128,6 +1268,34 @@ function renderFichaContenido(cont, ids) {
           `).join("")}
         </tbody>
       </table>
+    </div>
+  `;
+}
+
+// tarjeta "tipo pro" arriba de la ficha: nombre + stats clave + logros/badges
+// ganados + rival favorito, todo calculado sobre el set filtrado (pedido de
+// la usuaria: que la ficha se sienta más una carta de jugador que una tabla
+// pelada). La tabla partido a partido de abajo no cambia.
+function renderTarjetaFichaJugador(jugador, ids) {
+  const fila = tablaJugadores(estado.data, ids).find((f) => f.id_jugador === jugador.id_jugador);
+  const stats = fila
+    ? [["PJ", fila.pj], ["G", fila.g], ["A", fila.a], ["G+A", fila.ga]]
+    : [["PJ", 0], ["G", 0], ["A", 0], ["G+A", 0]];
+  const logros = logrosJugador(estado.data, ids, jugador.id_jugador);
+  const rival = jugadorRivalFavorito(estado.data, ids, jugador.id_jugador);
+
+  return `
+    <div class="ficha-card">
+      <h3 class="ficha-encabezado ficha-encabezado-grande">${avatarHTML(jugador.nombre_mostrar)}${jugador.nombre_mostrar}</h3>
+      <div class="ficha-stats-fila">
+        ${stats.map(([etiqueta, valor]) => `<span class="ficha-stat-chip"><strong>${valor}</strong> ${etiqueta}</span>`).join("")}
+      </div>
+      ${logros.length ? `
+        <ul class="badges-fila">
+          ${logros.map((l) => `<li class="badge" title="${l.detalle}">${l.icono} ${l.etiqueta}</li>`).join("")}
+        </ul>
+      ` : `<p class="ficha-sin-logros">Todavía sin logros en estos filtros.</p>`}
+      ${rival ? `<p class="ficha-rival-favorito">⚔️ Su rival favorito: <strong>${rival.rival}</strong> (${rival.goles} goles)</p>` : ""}
     </div>
   `;
 }

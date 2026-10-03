@@ -26,12 +26,22 @@ implementar nada de acá sin confirmar primero — es un pizarrón, no un sprint
   del celular) con fallback a copiar el link al portapapeles en desktop.
 - ~~Recordar la columna de orden de la tabla de jugadores en la URL~~ ✅ hecho:
   `ordenCol`/`ordenDir`, mismo patrón que el resto de los filtros.
-- Comparador de 2 jugadores lado a lado.
+- ~~Comparador de 2 jugadores lado a lado~~ ✅ hecho: sección "Comparar" en la
+  vista Jugadores (es una comparación de estadísticas, no de enfrentamientos
+  directos — Buitres no arma equipos internos, ver DECISIONS.md).
 - Gráfico de evolución de % de victorias / racha a lo largo del tiempo (no solo el
   snapshot actual de "racha actual").
 - Exportar la tabla de jugadores o un partido como imagen/CSV para mandar al grupo.
 - ~~PWA~~ ✅ hecho: manifest + ícono + service worker, instalable como app
   ("agregar a pantalla de inicio") ya que anda bien en el celular.
+
+**Competencia / "sentirse pro" (pedido de la usuaria, ver DECISIONS.md)**
+- "Resumen de temporada" exportable como imagen para compartir en el grupo
+  (tipo "wrapped"): es una feature real, pero de alcance propio (generación de
+  imagen/canvas) — no entró en la tanda de logros/rankings/comparador.
+- Votación de MVP por partido y predicciones/polla pre-partido: necesitan
+  backend real (cuentas, escritura) que el sitio no tiene hoy — descartadas
+  por arquitectura, no por falta de interés. Ver DECISIONS.md.
 
 **Calidad / infraestructura**
 - ~~Lighthouse real~~ ✅ hecho: 100/100 en las 4 categorías (Performance,

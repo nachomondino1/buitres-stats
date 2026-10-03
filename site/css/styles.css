@@ -994,6 +994,153 @@ main section + section {
   font-size: 0.85rem;
 }
 
+/* ---------- 2do/3er puesto del podio (Resumen → Jugadores destacados) ---------- */
+
+/* envuelve la tarjeta grande (líder) + la lista chica de abajo como una sola
+   celda del grid de .destacados-grid, sin heredar el fondo/borde de
+   .tarjeta-destacado (ver comentario en ui.js). */
+.tarjeta-destacado-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tarjeta-destacado-subrank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tarjeta-destacado-subrank button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+  background: none;
+  border: none;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+  border-radius: var(--radio);
+}
+
+.tarjeta-destacado-subrank button:hover {
+  background: color-mix(in srgb, var(--color-acento) 10%, transparent);
+  color: var(--color-texto);
+}
+
+/* ---------- ficha de jugador: tarjeta "tipo pro" + logros ---------- */
+
+.ficha-card {
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 1rem;
+  margin-bottom: var(--espacio);
+}
+
+.ficha-encabezado-grande {
+  font-size: 1.2rem;
+}
+
+.ficha-encabezado-grande .avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 1rem;
+}
+
+.ficha-stats-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ficha-stat-chip {
+  background: var(--color-bg);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--color-texto-tenue);
+}
+
+.ficha-stat-chip strong {
+  color: var(--color-texto);
+  margin-right: 0.3rem;
+}
+
+.badges-fila {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.badge {
+  background: color-mix(in srgb, var(--color-acento) 14%, transparent);
+  color: var(--color-acento);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ficha-sin-logros {
+  color: var(--color-texto-tenue);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+
+.ficha-rival-favorito {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-texto-tenue);
+}
+
+/* ---------- comparador de 2 jugadores ---------- */
+
+.comparador-selectores {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.comparador-selectores .filtro-campo {
+  flex: 1 1 160px;
+}
+
+.comparador-vs {
+  color: var(--color-texto-tenue);
+  font-size: 0.85rem;
+  padding-bottom: 0.6rem;
+}
+
+.comparador-tabla th:first-child,
+.comparador-tabla th:last-child {
+  width: 35%;
+}
+
+.comparador-etiqueta {
+  color: var(--color-texto-tenue);
+  font-size: 0.85rem;
+}
+
+.comparador-valor {
+  font-weight: 600;
+}
+
+.comparador-valor.comparador-ganador {
+  color: var(--color-ganado);
+}
+
 @media (max-width: 600px) {
   /* "menos es más" (pedido de la usuaria): en vez de un bloque fijo de ~19rem
      con todos los controles siempre desplegados, acá solo vive un botón
