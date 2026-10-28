@@ -62,11 +62,11 @@ no editar el marcador de `partidos` para que coincida.
 
 El equipo juega solo los sábados, así que **no hay cron**: actualizar el sitio
 después de cargar un partido es un paso manual (si el ritmo de carga cambia, se
-puede agregar un cron en `.github/workflows/deploy.yml`, ver el comentario ahí).
+puede agregar un cron en `.github/workflows/sync_data.yml`, ver el comentario ahí).
 
 1. Cargar el partido en el Google Sheet (`partidos`, `alineaciones`, `goles`) y
    revisar la hoja `checks` (sección de abajo).
-2. En GitHub: pestaña **Actions** > workflow **Deploy** (barra lateral izquierda) >
+2. En GitHub: pestaña **Actions** > workflow **Sync data** (barra lateral izquierda) >
    botón **Run workflow** (arriba a la derecha) > **Run workflow** de nuevo para
    confirmar.
 3. Esperar ~1 minuto (dos jobs: `test` y `deploy`) y refrescar

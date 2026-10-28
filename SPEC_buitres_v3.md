@@ -195,7 +195,7 @@ export_data.py
 scripts/{build_v3.py, stats_ref.py}   (build_v3 genera también propuesta_jugadores.csv)
 tests/{test_export.py, test_parity.py}
 site/…            (ver §4)
-.github/workflows/deploy.yml
+.github/workflows/sync_data.yml
 README.md         (cómo cargar un partido, cómo publicar, cómo correr tests)
 DECISIONS.md
 BACKLOG.md

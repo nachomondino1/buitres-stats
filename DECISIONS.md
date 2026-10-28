@@ -390,7 +390,7 @@ propósito, ahí es correcto mostrar la hora local del que mira el sitio.
 
 ### El job de deploy en CI arranca apagado
 
-`.github/workflows/deploy.yml` tiene dos jobs: `test` (siempre corre: pytest + node
+`.github/workflows/sync_data.yml` tiene dos jobs: `test` (siempre corre: pytest + node
 --test) y `deploy` (a GitHub Pages). El dato real vive en Google Sheets, no en el repo
 (`data/` está en `.gitignore`), así que `deploy` no tiene de dónde sacar un `.xlsx` en
 CI — necesita el backend `gsheets`, que es Fase 2b y está explícitamente diferida en la
