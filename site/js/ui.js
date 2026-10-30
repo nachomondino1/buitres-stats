@@ -510,40 +510,124 @@ function irAPartidos() {
 
 function renderResumen(cont, ids) {
   const r = resumenEquipo(estado.data, ids);
-  const tarjetaUltimo = renderTarjetaUltimoPartidoMini();
   if (r.pj === 0) {
-    cont.innerHTML = `<p class="estado-vacio">No hay partidos para estos filtros.</p>${tarjetaUltimo}`;
+    cont.innerHTML = `<p class="estado-vacio">No hay partidos para estos filtros.</p>${renderTarjetaUltimoPartidoMini()}`;
     return;
   }
   const forma = ultimosResultados(estado.data, ids, 5);
-  const seccionRachas = renderRachasHistoricas(ids, r.racha);
-  const seccionDestacados = renderJugadoresDestacados(ids);
-  const seccionCuriosos = renderDatosCuriosos(ids);
   cont.innerHTML = `
-    <section class="resumen-bloque resumen-bloque-hero">
-      <h2>Resultados</h2>
-      ${filaTarjetas([["PJ", r.pj], ["% victorias", fmtPorcentaje(r.pctVictorias)]], "resumen-grid-hero")}
-      ${filaTarjetas([["G", r.g, "tarjeta-g"], ["E", r.e, "tarjeta-e"], ["P", r.p, "tarjeta-p"]])}
-      ${filaTarjetas([["GF", r.gf], ["GC", r.gc], ["Dif", r.dif]])}
-      ${filaTarjetas([["Prom. GF/partido", fmtPromedio(r.promedioGf)], ["Prom. GC/partido", fmtPromedio(r.promedioGc)]])}
-      <p class="resumen-forma">Últimos partidos: ${puntosForma(forma)}</p>
-      ${tarjetaUltimo}
-    </section>
-    ${seccionRachas ? `<section class="resumen-bloque">${seccionRachas}</section>` : ""}
-    ${seccionDestacados ? `<section class="resumen-bloque">${seccionDestacados}</section>` : ""}
-    ${seccionCuriosos ? `<section class="resumen-bloque">${seccionCuriosos}</section>` : ""}
+    <div class="paneles">
+      ${renderHeroResumen(r, forma)}
+      ${renderJugadoresDestacados(ids)}
+      <div class="resumen__par">
+        ${renderRachasHistoricas(ids, r.racha)}
+        ${renderDatosCuriosos(ids)}
+      </div>
+    </div>
   `;
   activarScrollASecciones(cont);
-  // selector genérico (no solo ".tarjeta-destacado"): el podio de top 3 agrega
-  // botones de 2do/3er puesto que viven en su propia lista, no en la tarjeta grande.
+  // selector genérico: el podio de top 3 y las filas de curiosidades con
+  // jugador son botones distintos, todos con data-jugador-id.
   for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
   cont.querySelector("[data-ir-partidos]")?.addEventListener("click", irAPartidos);
 }
 
-// rachas: la actual (pedido de la usuaria: vivía suelta arriba, ahora es una
-// tarjeta más acá) + las históricas (la más larga ganando/perdiendo y la más
+// Resumen = una pila de "paneles" uniformes (mismo borde, radio, cabecera en
+// mayúscula chica) en vez de tarjetitas sueltas: título + descripción corta
+// arriba, y adentro filas con separador fino. Poco aire entre paneles a
+// propósito (pedido de la usuaria: la mitad de lo que había).
+function panel(titulo, descripcion, cuerpo, { clase = "", id = "" } = {}) {
+  return `
+    <article class="panel ${clase}"${id ? ` id="${id}"` : ""}>
+      <header class="panel__cabecera">
+        <h2 class="panel__titulo">${titulo}</h2>
+        ${descripcion ? `<p class="panel__desc">${descripcion}</p>` : ""}
+      </header>
+      ${cuerpo}
+    </article>
+  `;
+}
+
+// fila genérica: etiqueta (+ detalle chico debajo) a la izquierda, valor a la derecha.
+function fila(etiqueta, detalle, valor, tono) {
+  const claseTono = tono ? ` valor-${tono}` : "";
+  return `
+    <div class="fila">
+      <span class="fila__texto">
+        <span class="fila__etiqueta">${etiqueta}</span>
+        ${detalle ? `<span class="fila__detalle">${detalle}</span>` : ""}
+      </span>
+      <span class="fila__valor${claseTono}">${valor}</span>
+    </div>
+  `;
+}
+
+// igual que fila() pero el valor es un jugador (con avatar) y toda la fila es
+// clickeable -> va a su ficha.
+function filaJugador(etiqueta, detalle, jugador) {
+  return `
+    <button type="button" class="fila fila--boton" data-jugador-id="${jugador.idJugador}">
+      <span class="fila__texto">
+        <span class="fila__etiqueta">${etiqueta}</span>
+        ${detalle ? `<span class="fila__detalle">${detalle}</span>` : ""}
+      </span>
+      <span class="fila__valor fila__valor--jugador">${avatarHTML(jugador.nombre)}${jugador.nombre}</span>
+    </button>
+  `;
+}
+
+// "hero" de Resumen: un solo panel con lo que más importa del equipo
+// (partidos, % victorias, G/E/P en una barra proporcional), la tira de goles
+// y el último partido, en vez de 4 filas de tarjetas sueltas.
+function renderHeroResumen(r, forma) {
+  const u = ultimoPartido(estado.data);
+  const dif = r.dif > 0 ? `+${r.dif}` : r.dif;
+  const stats = [["GF", r.gf], ["GC", r.gc], ["Dif", dif], ["Prom. GF", fmtPromedio(r.promedioGf)], ["Prom. GC", fmtPromedio(r.promedioGc)]];
+  const segmentos = [["g", r.g], ["e", r.e], ["p", r.p]]
+    .filter(([, cantidad]) => cantidad > 0)
+    .map(([clave, cantidad]) => `<span class="barra__${clave}" style="flex:${cantidad}"></span>`)
+    .join("");
+  const ultimo = u ? `
+    <div class="hero__ultimo">
+      <span class="eyebrow">Último partido</span>
+      <span class="hero__ultimo-texto">${fmtFechaISO(u.fecha)} · ${u.tipo} · <strong>Los Buitres ${u.gf} – ${u.gc} ${u.rival}</strong></span>
+      <span class="resultado resultado-${u.resultado}">${u.resultado}</span>
+      <button type="button" class="enlace" data-ir-partidos>Ver partidos →</button>
+    </div>
+  ` : "";
+  const cuerpo = `
+    <div class="hero__principal">
+      <div class="hero__cifra"><span class="hero__valor">${r.pj}</span><span class="hero__etiqueta">partidos</span></div>
+      <div class="hero__cifra"><span class="hero__valor">${fmtPorcentaje(r.pctVictorias)}</span><span class="hero__etiqueta">victorias</span></div>
+      <div class="hero__resultados">
+        <div class="barra" role="img" aria-label="${r.g} ganados, ${r.e} empatados, ${r.p} perdidos">${segmentos}</div>
+        <ul class="leyenda">
+          <li class="leyenda__g"><strong>${r.g}</strong> ganados</li>
+          <li class="leyenda__e"><strong>${r.e}</strong> empatados</li>
+          <li class="leyenda__p"><strong>${r.p}</strong> perdidos</li>
+        </ul>
+      </div>
+    </div>
+    <dl class="hero__stats">
+      ${stats.map(([etiqueta, valor]) => `<div class="hero__stat"><dt>${etiqueta}</dt><dd>${valor}</dd></div>`).join("")}
+    </dl>
+    ${ultimo}
+  `;
+  const puntos = forma.length ? `<span class="hero__forma">Últimos ${forma.length} ${puntosForma(forma)}</span>` : "";
+  return `
+    <article class="panel panel--hero">
+      <header class="panel__cabecera">
+        <h2 class="panel__titulo">Resultados</h2>
+        ${puntos}
+      </header>
+      ${cuerpo}
+    </article>
+  `;
+}
+
+// rachas: la actual + las históricas (la más larga ganando/perdiendo y la más
 // larga sin ganar / sin perder), cada una con su rango de fechas.
 function renderRachasHistoricas(ids, rachaActual) {
   const r = rachasHistoricas(estado.data, ids);
@@ -554,47 +638,28 @@ function renderRachasHistoricas(ids, rachaActual) {
     ["Más partidos seguidos sin perder", r.sinPerder, "bueno"],
   ];
   if (!rachaActual && items.every(([, racha]) => !racha)) return "";
-  return `
-    <h2>Rachas</h2>
-    ${descripcionSeccion("La racha actual del equipo y los mejores (y peores) rachas de la historia, con el rango de fechas de cada una.")}
-    <div class="destacados-grid">
-      ${tarjetaRachaActual(rachaActual)}
-      ${items.map(([etiqueta, racha, tono]) => tarjetaRacha(etiqueta, racha, tono)).join("")}
-    </div>
-  `;
+  const filas = [filaRachaActual(rachaActual), ...items.map(([etiqueta, racha, tono]) => filaRacha(etiqueta, racha, tono))];
+  return panel(
+    "Rachas",
+    "La racha actual del equipo y las mejores y peores de la historia.",
+    `<div class="filas">${filas.join("")}</div>`,
+  );
 }
 
-// G/E/P: mismo color que el resto de la app usa para ese resultado (ver
-// .tarjeta-g/-e/-p), no siempre verde — el verde es "bueno", no "el dato
-// importante" (pedido de la usuaria).
-function tarjetaRachaActual(racha) {
-  if (!racha) {
-    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">Racha actual</span><span class="tarjeta-destacado-valor">–</span></div>`;
-  }
+// G/E/P: mismo color que el resto de la app usa para ese resultado, no siempre
+// verde — el verde es "bueno", no "el dato importante" (pedido de la usuaria).
+function filaRachaActual(racha) {
+  if (!racha) return fila("Racha actual", "", "–");
   const tono = { G: "bueno", E: "empate", P: "malo" }[racha.resultado];
-  return `
-    <div class="tarjeta-destacado">
-      <span class="tarjeta-destacado-etiqueta">Racha actual</span>
-      <span class="tarjeta-destacado-valor valor-${tono}">${racha.cantidad}</span>
-      <span class="tarjeta-destacado-etiqueta">${etiquetaRacha(racha.resultado)}</span>
-    </div>
-  `;
+  return fila("Racha actual", etiquetaRacha(racha.resultado), racha.cantidad, tono);
 }
 
-function tarjetaRacha(etiqueta, racha, tono) {
-  if (!racha) {
-    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
-  }
+function filaRacha(etiqueta, racha, tono) {
+  if (!racha) return fila(etiqueta, "", "–");
   const rango = racha.desde === racha.hasta
     ? fmtFechaISO(racha.desde)
     : `${fmtFechaISO(racha.desde)} – ${fmtFechaISO(racha.hasta)}`;
-  return `
-    <div class="tarjeta-destacado">
-      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-valor valor-${tono}">${racha.cantidad}</span>
-      <span class="tarjeta-destacado-etiqueta">${rango}</span>
-    </div>
-  `;
+  return fila(etiqueta, rango, racha.cantidad, tono);
 }
 
 // categoría de tablaJugadores -> etiqueta/unidad para el podio de "Jugadores
@@ -619,56 +684,35 @@ function renderJugadoresDestacados(ids) {
   ]);
   const racha = jugadorEnRacha(estado.data, ids);
   if (podios.every(([, , top]) => top.length === 0) && !racha) return "";
-  return `
-    <h2>Jugadores destacados</h2>
-    ${descripcionSeccion("Quién lidera cada estadística individual en los partidos filtrados, con el 2do y 3er puesto. Tocá un jugador para ver su ficha completa.")}
-    <div class="destacados-grid">
-      ${podios.map(([etiqueta, unidad, top]) => tarjetaDestacado(etiqueta, top[0], unidad, top.slice(1))).join("")}
-      ${tarjetaJugadorEnRacha(racha)}
-    </div>
-  `;
+  return panel(
+    "Jugadores destacados",
+    "Quién lidera cada estadística, con 2.º y 3.º puesto. Tocá un jugador para ver su ficha.",
+    `<div class="podios">${podios.map(([etiqueta, unidad, top]) => podio(etiqueta, unidad, top)).join("")}</div>${filaJugadorEnRacha(racha)}`,
+  );
 }
 
-function tarjetaDestacado(etiqueta, v, unidad, subrank = []) {
-  if (!v) {
-    return `<div class="tarjeta-destacado tarjeta-destacado-vacia"><span class="tarjeta-destacado-etiqueta">${etiqueta}</span><span class="tarjeta-destacado-valor">–</span></div>`;
-  }
-  const tarjeta = `
-    <button type="button" class="tarjeta-destacado" data-jugador-id="${v.idJugador}">
-      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-jugador">${avatarHTML(v.nombre)}${v.nombre}</span>
-      <span class="tarjeta-destacado-valor">${v.valor} ${unidad}</span>
-    </button>
-  `;
-  if (subrank.length === 0) return tarjeta;
-  // grupo propio (no reusa la clase .tarjeta-destacado) para no heredar su
-  // fondo/borde/padding: acá solo hace falta apilar la tarjeta grande + la
-  // lista chica de 2do/3er puesto como una sola celda del grid.
-  return `<div class="tarjeta-destacado-grupo">${tarjeta}${renderSubrank(subrank)}</div>`;
-}
-
-function renderSubrank(subrank) {
-  const medallas = ["🥈", "🥉"];
-  return `
-    <ul class="tarjeta-destacado-subrank">
-      ${subrank.map((s, i) => `<li><button type="button" data-jugador-id="${s.idJugador}">${medallas[i] ?? "•"} ${s.nombre} · ${s.valor}</button></li>`).join("")}
-    </ul>
-  `;
+// una columna por categoría, con el top 3 como lista (el 1.º resaltado por CSS).
+function podio(etiqueta, unidad, top) {
+  const medallas = ["🥇", "🥈", "🥉"];
+  const filas = top.length === 0
+    ? `<li class="podio__vacio">–</li>`
+    : top.map((j, i) => `
+      <li>
+        <button type="button" class="podio__fila" data-jugador-id="${j.idJugador}">
+          <span class="podio__medalla" aria-hidden="true">${medallas[i] ?? "•"}</span>
+          <span class="podio__nombre">${avatarHTML(j.nombre)}<span class="podio__nombre-texto">${j.nombre}</span></span>
+          <span class="podio__valor">${j.valor}</span>
+        </button>
+      </li>`).join("");
+  return `<div class="podio"><h3 class="podio__titulo">${etiqueta} <small>${unidad}</small></h3><ol class="podio__lista">${filas}</ol></div>`;
 }
 
 // jugador con la racha goleadora ACTUAL más larga (ver jugadorEnRacha() en
-// stats.js): a diferencia de las otras 4 tarjetas, no muestra un placeholder
-// "–" si no aplica — con pocos partidos cargados es normal que todavía nadie
-// esté en racha, y no suma nada mostrar eso como un hueco vacío.
-function tarjetaJugadorEnRacha(racha) {
+// stats.js): sin placeholder "–" si no aplica — con pocos partidos cargados es
+// normal que todavía nadie esté en racha.
+function filaJugadorEnRacha(racha) {
   if (!racha) return "";
-  return `
-    <button type="button" class="tarjeta-destacado" data-jugador-id="${racha.idJugador}">
-      <span class="tarjeta-destacado-etiqueta">🔥 Jugador en racha</span>
-      <span class="tarjeta-destacado-jugador">${avatarHTML(racha.nombre)}${racha.nombre}</span>
-      <span class="tarjeta-destacado-valor valor-bueno">${racha.cantidad} partidos seguidos convirtiendo</span>
-    </button>
-  `;
+  return `<div class="filas filas--pie">${filaJugador("🔥 Jugador en racha", `${racha.cantidad} partidos seguidos convirtiendo`, racha)}</div>`;
 }
 
 // "Datos curiosos": coincidencias que salen de cruzar los datos entre sí
@@ -683,15 +727,15 @@ function renderDatosCuriosos(ids) {
   if (d.rivalRepetido) {
     const r = d.rivalRepetido;
     const record = [r.g && `${r.g}G`, r.e && `${r.e}E`, r.p && `${r.p}P`].filter(Boolean).join("-");
-    tarjetas.push(tarjetaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
+    tarjetas.push(filaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
   }
   if (d.marcadorRepetido) {
     const m = d.marcadorRepetido;
-    tarjetas.push(tarjetaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
+    tarjetas.push(filaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
   }
   if (d.jugadorAmuleto) {
     const j = d.jugadorAmuleto;
-    tarjetas.push(tarjetaCuriosidadJugador(
+    tarjetas.push(filaCuriosidadJugador(
       "Jugador amuleto",
       j,
       `${fmtPorcentaje(j.pctVictorias)} de victorias del equipo en sus ${j.pj} PJ`,
@@ -699,7 +743,7 @@ function renderDatosCuriosos(ids) {
   }
   if (d.masGolesUnPartido) {
     const m = d.masGolesUnPartido;
-    tarjetas.push(tarjetaCuriosidadJugador(
+    tarjetas.push(filaCuriosidadJugador(
       "Más goles en un solo partido",
       m,
       `${m.cantidad} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`,
@@ -707,11 +751,11 @@ function renderDatosCuriosos(ids) {
   }
   if (d.vallaInvicta) {
     const v = d.vallaInvicta;
-    tarjetas.push(tarjetaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
+    tarjetas.push(filaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
   }
   if (d.partidoMasDesparejo) {
     const p = d.partidoMasDesparejo;
-    tarjetas.push(tarjetaCuriosidad(
+    tarjetas.push(filaCuriosidad(
       p.aFavor ? "Goleada más contundente" : "Peor derrota",
       `${p.gf}-${p.gc}`,
       `${fmtFechaISO(p.fecha)} vs ${p.rival}`,
@@ -720,13 +764,11 @@ function renderDatosCuriosos(ids) {
   }
 
   if (tarjetas.length === 0) return "";
-  return `
-    <h2>Datos curiosos</h2>
-    ${descripcionSeccion("Coincidencias y récords que salen de cruzar los datos entre sí: rival más enfrentado, marcador que más se repitió, y más.")}
-    <div class="destacados-grid">
-      ${tarjetas.join("")}
-    </div>
-  `;
+  return panel(
+    "Datos curiosos",
+    "Coincidencias y récords que salen de cruzar los datos entre sí.",
+    `<div class="filas">${tarjetas.join("")}</div>`,
+  );
 }
 
 function listaConY(items) {
@@ -734,50 +776,16 @@ function listaConY(items) {
   return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
 }
 
-// hecho sin jugador asociado (rival, marcador, partido): mismo layout de
-// tarjetaRacha (etiqueta / valor grande / detalle). `tono` es opcional: solo
-// los hechos claramente buenos/malos lo usan (el resto queda neutro, ver
-// comentario arriba de .tarjeta-destacado-valor en el CSS).
-function tarjetaCuriosidad(etiqueta, valor, detalle, tono) {
-  const claseTono = tono ? ` valor-${tono}` : "";
-  return `
-    <div class="tarjeta-destacado">
-      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-valor${claseTono}">${valor}</span>
-      <span class="tarjeta-destacado-etiqueta">${detalle}</span>
-    </div>
-  `;
+// hecho sin jugador asociado (rival, marcador, partido). `tono` es opcional:
+// solo los hechos claramente buenos/malos lo usan (el resto queda neutro, ver
+// comentario arriba de .valor-bueno en el CSS).
+function filaCuriosidad(etiqueta, valor, detalle, tono) {
+  return fila(etiqueta, detalle, valor, tono);
 }
 
-// hecho protagonizado por un jugador: mismo layout que tarjetaDestacado
-// (clickeable -> va a su ficha), con el detalle de la coincidencia abajo.
-function tarjetaCuriosidadJugador(etiqueta, jugador, detalle) {
-  return `
-    <button type="button" class="tarjeta-destacado" data-jugador-id="${jugador.idJugador}">
-      <span class="tarjeta-destacado-etiqueta">${etiqueta}</span>
-      <span class="tarjeta-destacado-jugador">${avatarHTML(jugador.nombre)}${jugador.nombre}</span>
-      <span class="tarjeta-destacado-valor">${detalle}</span>
-    </button>
-  `;
-}
-
-// una fila = un grupo semántico (resultado, goles, etc.) en su propia grilla,
-// para separarlos visualmente en vez de una sola grilla con las 8 tarjetas
-// mezcladas.
-function filaTarjetas(items, claseFila = "") {
-  const tarjetas = items.map(([et, val, clase = ""]) => miniTarjeta(et, val, clase)).join("");
-  return `<div class="resumen-grid ${claseFila}">${tarjetas}</div>`;
-}
-
-function miniTarjeta(etiqueta, valor, clase) {
-  return `<div class="resumen-tarjeta ${clase}"><span class="valor">${valor}</span><span class="etiqueta">${etiqueta}</span></div>`;
-}
-
-// una línea chica debajo del <h2> de una sección, explicando qué se ve ahí
-// abajo antes de que el lector tenga que inferirlo de la tabla/gráfico
-// (pedido de la usuaria, ver ej. "Dúos" en la vista Jugadores).
-function descripcionSeccion(texto) {
-  return `<p class="seccion-descripcion">${texto}</p>`;
+// hecho protagonizado por un jugador: fila clickeable -> va a su ficha.
+function filaCuriosidadJugador(etiqueta, jugador, detalle) {
+  return filaJugador(etiqueta, detalle, jugador);
 }
 
 function etiquetaRacha(resultado) {
@@ -799,8 +807,7 @@ function renderTarjetaUltimoPartido() {
   if (!u) return "";
   const golesTexto = (lista, icono) =>
     lista.length ? `<p class="tarjeta-ultimo-detalle">${icono} ${lista.map((x) => `${x.nombre}${x.cantidad > 1 ? ` x${x.cantidad}` : ""}`).join(", ")}</p>` : "";
-  return `
-    <h2>Último partido</h2>
+  return panel("Último partido", "", `
     <div class="tarjeta-ultimo">
       <div class="tarjeta-ultimo-header">
         <span>${fmtFechaISO(u.fecha)} · ${u.tipo} vs ${u.rival}</span>
@@ -810,7 +817,7 @@ function renderTarjetaUltimoPartido() {
       ${golesTexto(u.goleadores, "⚽")}
       ${golesTexto(u.asistidores, "🅰️")}
     </div>
-  `;
+  `);
 }
 
 // versión mini para Resumen: solo el resultado, sin goleadores/alineación
@@ -819,8 +826,7 @@ function renderTarjetaUltimoPartido() {
 function renderTarjetaUltimoPartidoMini() {
   const u = ultimoPartido(estado.data);
   if (!u) return "";
-  return `
-    <h2>Último partido</h2>
+  return panel("Último partido", "", `
     <div class="tarjeta-ultimo">
       <div class="tarjeta-ultimo-header">
         <span>${fmtFechaISO(u.fecha)} · ${u.tipo} vs ${u.rival}</span>
@@ -829,7 +835,7 @@ function renderTarjetaUltimoPartidoMini() {
       <div class="tarjeta-ultimo-marcador">Los Buitres ${u.gf} – ${u.gc} ${u.rival}</div>
       <button type="button" class="tarjeta-ultimo-link" data-ir-partidos>Ver todos los partidos →</button>
     </div>
-  `;
+  `);
 }
 
 // `glosario`: qué significa la sigla. Se usa como title del <abbr> (hover en
@@ -885,16 +891,12 @@ function renderEquipo(cont, ids) {
       ["seccion-historial-rivales", "Historial"],
       ["seccion-graficos-equipo", "Goles"],
     ])}
-    <section id="seccion-historial-rivales">
-      <h2>Historial vs rivales</h2>
-      ${descripcionSeccion("El acumulado de todos los enfrentamientos contra cada rival: partidos jugados, resultados y goles.")}
-      <div id="historial-rivales-contenido"></div>
-    </section>
-    <section id="seccion-graficos-equipo">
-      <h2>Goles</h2>
-      ${descripcionSeccion("Cómo evolucionaron los goles a favor y en contra partido a partido, de dónde vinieron y en qué momento del partido se convirtieron.")}
-      <div id="graficos-equipo-contenido"></div>
-    </section>
+    <div class="paneles">
+      ${panel("Historial vs rivales", "El acumulado de todos los enfrentamientos contra cada rival: partidos jugados, resultados y goles.",
+        `<div id="historial-rivales-contenido"></div>`, { id: "seccion-historial-rivales" })}
+      ${panel("Goles", "Cómo evolucionaron los goles a favor y en contra, de dónde vinieron y en qué momento del partido se convirtieron.",
+        `<div id="graficos-equipo-contenido" class="graficos"></div>`, { id: "seccion-graficos-equipo" })}
+    </div>
   `;
   activarScrollASecciones(cont);
   renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
@@ -909,10 +911,10 @@ function renderEquipo(cont, ids) {
 
 function renderPartidosVista(cont, ids) {
   cont.innerHTML = `
-    ${renderTarjetaUltimoPartido()}
-    <h2>Partidos</h2>
-    ${descripcionSeccion("El historial completo, partido por partido: resultado, alineación y goles. Tocá uno para ver el detalle.")}
-    <div id="partidos-contenido"></div>
+    <div class="paneles">
+      ${renderTarjetaUltimoPartido()}
+      ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`)}
+    </div>
   `;
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
 }
@@ -1026,33 +1028,18 @@ function renderJugadores(cont, ids) {
       ["seccion-comparar", "Comparar"],
       ["seccion-ficha", "Ficha"],
     ])}
-    <section id="seccion-tabla-jugadores">
-      <h2>Jugadores</h2>
-      ${descripcionSeccion("Estadísticas acumuladas de cada jugador en los partidos filtrados. Tocá un encabezado de columna para ordenar por ese dato, o el nombre de un jugador para ver su ficha.")}
-      <div id="tabla-jugadores-contenido"></div>
-    </section>
-    <section id="seccion-graficos-jugadores">
-      <h2>Gráficos</h2>
-      ${descripcionSeccion("Ranking de los jugadores más determinantes, por goles y asistencias.")}
-      <div id="graficos-jugadores-contenido"></div>
-    </section>
-    <section id="seccion-duos">
-      <h2>Dúos asistidor → goleador</h2>
-      ${descripcionSeccion("Qué combinaciones de pase y definición se repitieron más: quién asistió a quién, y cuántas veces.")}
-      <div id="duos-contenido"></div>
-    </section>
-    <section id="seccion-comparar">
-      <h2>Comparar jugadores</h2>
-      ${descripcionSeccion("Elegí 2 jugadores para ver sus estadísticas lado a lado en los partidos filtrados. Buitres no arma equipos internos, así que esto compara números, no enfrentamientos directos.")}
-      <div id="comparar-selector"></div>
-      <div id="comparar-contenido"></div>
-    </section>
-    <section id="seccion-ficha">
-      <h2>Ficha de jugador</h2>
-      ${descripcionSeccion("Elegí un jugador para ver su carta de stats, logros y, partido por partido, en qué goles y asistencias participó.")}
-      <div id="ficha-selector"></div>
-      <div id="ficha-contenido"></div>
-    </section>
+    <div class="paneles">
+      ${panel("Jugadores", "Estadísticas acumuladas de cada jugador. Tocá un encabezado para ordenar, o un nombre para ver su ficha.",
+        `<div id="tabla-jugadores-contenido"></div>`, { id: "seccion-tabla-jugadores" })}
+      ${panel("Gráficos", "Ranking de los jugadores más determinantes, por goles y asistencias.",
+        `<div id="graficos-jugadores-contenido"></div>`, { id: "seccion-graficos-jugadores" })}
+      ${panel("Dúos asistidor → goleador", "Qué combinaciones de pase y definición se repitieron más.",
+        `<div id="duos-contenido"></div>`, { id: "seccion-duos" })}
+      ${panel("Comparar jugadores", "Elegí 2 jugadores para ver sus estadísticas lado a lado. Buitres no arma equipos internos, así que esto compara números, no enfrentamientos directos.",
+        `<div id="comparar-selector"></div><div id="comparar-contenido"></div>`, { id: "seccion-comparar" })}
+      ${panel("Ficha de jugador", "Elegí un jugador para ver su carta de stats, logros y sus goles y asistencias partido por partido.",
+        `<div id="ficha-selector"></div><div id="ficha-contenido"></div>`, { id: "seccion-ficha" })}
+    </div>
   `;
   activarScrollASecciones(cont);
   renderTablaJugadoresContenido(cont.querySelector("#tabla-jugadores-contenido"), ids);

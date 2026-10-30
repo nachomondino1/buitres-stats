@@ -2,6 +2,36 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Rediseño con el playbook unificado + sistema de "paneles" (pedido de la usuaria)
+
+Se aplicó `DESIGN_PLAYBOOK_unificado.md` (tokens con `--color-bg-sutil`,
+`--color-borde-suave`, sombras, radios 8/12/16, dark slate, Inter con carga no
+bloqueante, base 14px, labels en mayúscula, `tabular-nums`) y después, ante el
+feedback "mucho espacio entre secciones, el layout es medio feo", un cambio de
+layout más fuerte: **todas las vistas son una pila de `.panel` uniformes**
+(borde suave + sombra sutil + cabecera en mayúscula chica + descripción de una
+línea), con 1,25rem entre paneles en desktop y 0,75rem en mobile (antes ~9,5rem
+entre secciones).
+
+- **Resumen:** un hero único (partidos, % victorias, barra G/E/P proporcional,
+  tira de GF/GC/Dif/promedios, último partido) en vez de 4 filas de tarjetas;
+  podios en 4 columnas; Rachas y Datos curiosos como listas de filas
+  (etiqueta+detalle a la izquierda, valor a la derecha) con separador fino.
+- **Equipo / Partidos / Jugadores:** cada sección pasó de `<section><h2>` a
+  `panel()` (helper en `ui.js`); tablas, gráficos, partidos y ficha quedan
+  aplanados adentro (sin cajas dentro de cajas). Los 3 gráficos de goles van en
+  fila.
+- Se sacó el divisor global `main section + section` y `descripcionSeccion()`.
+- **Desvíos del playbook, a propósito:** números de tabla siguen centrados
+  (pedido anterior explícito) y se mantiene el toggle de tema manual.
+- **Filtros mobile:** tope de 30% del alto (`max-height: calc(30dvh - 48px)`,
+  scroll por dentro), medido en 375×667: 6% colapsado, 28,9% abierto. Hizo
+  falta `flex-wrap: nowrap`: con `column` + `wrap` + `max-height`, los campos se
+  reparten en columnas extra a la derecha en vez de scrollear.
+- `sw.js` a `buitres-v5` para que nadie vea el CSS viejo.
+- Pendiente: Lighthouse con Inter, chevron custom en los `<select>`, medir 320px
+  y landscape bajo.
+
 ## Logros, rankings, comparador y rival favorito (pedido de la usuaria)
 
 La usuaria pidió ideas de otras apps de fútbol amateur con foco en que los

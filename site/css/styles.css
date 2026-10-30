@@ -1,35 +1,49 @@
 :root {
-  --color-bg: #f7f7f5;
+  /* superficies: fondo off-white cálido, tarjetas en blanco puro para que "floten" */
+  --color-bg: #fafaf8;
+  --color-bg-sutil: #f2f1ed;
   --color-bg-elevado: #ffffff;
-  --color-texto: #1a1a1a;
-  --color-texto-tenue: #5a5a5a;
-  --color-borde: #dddddd;
+  /* texto: casi-negro cálido, nunca #000 */
+  --color-texto: #1a1a17;
+  --color-texto-tenue: #6f6d67;
+  --color-texto-suave: #8a877f;
+  /* dos niveles de borde: interactivos vs contenedores */
+  --color-borde: #e4e2dc;
+  --color-borde-suave: #ecebe6;
   --color-acento: #1f6f4a;
+  --color-acento-suave: color-mix(in srgb, var(--color-acento) 12%, transparent);
   --color-acento-texto: #ffffff;
   --color-ganado: #1f6f4a;
   --color-empatado: #b58900;
   --color-perdido: #b33a3a;
   --color-aviso-bg: #fff4e5;
   --color-aviso-borde: #e0a63a;
-  --radio: 8px;
+  --radio-sm: 8px;
+  --radio: 12px;
+  --radio-lg: 16px;
   --espacio: 1rem;
+  --sombra-xs: 0 1px 2px rgba(20, 19, 15, 0.05);
+  --sombra-sm: 0 1px 3px rgba(20, 19, 15, 0.06), 0 1px 2px rgba(20, 19, 15, 0.04);
+  --sombra-md: 0 8px 24px rgba(20, 19, 15, 0.1);
+  --sombra-lg: 0 18px 32px -10px rgba(20, 19, 15, 0.16), 0 4px 10px rgba(20, 19, 15, 0.06);
 }
 
 /* modo oscuro automático (sigue al sistema) + el mismo bloque repetido bajo
    [data-theme="dark"] para cuando se fuerza a mano con el botón del header
    (ver construirToggleTema() en ui.js). :not([data-theme="light"]) es para
-   que "forzar claro" le siga ganando al sistema en dark mode. */
+   que "forzar claro" le siga ganando al sistema en dark mode. Paleta "slate"
+   (nunca gris neutro ni negro puro) con las tarjetas bien más claras que el
+   fondo, para que se despeguen en vez de verse como una sola masa negra. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* paleta "slate", no gris neutro: todo con un dejo azulado, y la
-       superficie de las tarjetas (--color-bg-elevado) bastante más clara que
-       el fondo de página en vez de casi igual, para que las tarjetas se
-       despeguen en vez de que todo se vea como una sola masa negra. */
-    --color-bg: #191d24;
-    --color-bg-elevado: #262c37;
-    --color-texto: #eef1f4;
-    --color-texto-tenue: #9aa4b0;
-    --color-borde: #3a4150;
+    --color-bg: #0f1218;
+    --color-bg-sutil: #1a202b;
+    --color-bg-elevado: #181e29;
+    --color-texto: #e6e8ec;
+    --color-texto-tenue: #9aa3b2;
+    --color-texto-suave: #6b7585;
+    --color-borde: #2a3342;
+    --color-borde-suave: #212836;
     --color-acento: #4cb37c;
     --color-acento-texto: #0d1410;
     --color-ganado: #4cb37c;
@@ -37,15 +51,22 @@
     --color-perdido: #e8707a;
     --color-aviso-bg: #3a2f17;
     --color-aviso-borde: #8a6a24;
+    --sombra-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --sombra-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --sombra-lg: 0 18px 32px -10px rgba(0, 0, 0, 0.6);
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #191d24;
-  --color-bg-elevado: #262c37;
-  --color-texto: #eef1f4;
-  --color-texto-tenue: #9aa4b0;
-  --color-borde: #3a4150;
+  --color-bg: #0f1218;
+  --color-bg-sutil: #1a202b;
+  --color-bg-elevado: #181e29;
+  --color-texto: #e6e8ec;
+  --color-texto-tenue: #9aa3b2;
+  --color-texto-suave: #6b7585;
+  --color-borde: #2a3342;
+  --color-borde-suave: #212836;
   --color-acento: #4cb37c;
   --color-acento-texto: #0d1410;
   --color-ganado: #4cb37c;
@@ -53,19 +74,42 @@
   --color-perdido: #e8707a;
   --color-aviso-bg: #3a2f17;
   --color-aviso-borde: #8a6a24;
+  --sombra-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sombra-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --sombra-lg: 0 18px 32px -10px rgba(0, 0, 0, 0.6);
 }
 
 * {
   box-sizing: border-box;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-texto);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
-  line-height: 1.4;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
 }
 
 .visually-hidden {
@@ -122,13 +166,27 @@ body {
 
 header.app-header {
   padding: var(--espacio);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: 1px solid var(--color-borde-suave);
   background: var(--color-bg-elevado);
+}
+
+/* blur solo en desktop: backdrop-filter en un ancestro convierte en su bloque
+   contenedor a los hijos position:fixed, y en mobile el nav.tabs (dentro del
+   header) va fijo al viewport. */
+@media (min-width: 601px) {
+  header.app-header {
+    background: color-mix(in srgb, var(--color-bg-elevado) 85%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--sombra-sm);
+  }
 }
 
 header.app-header h1 {
   margin: 0;
   font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .boton-titulo {
@@ -188,13 +246,22 @@ header.app-header h1 {
   border: 1px solid var(--color-acento);
   background: transparent;
   color: var(--color-acento);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   min-height: 2.25rem;
   white-space: nowrap;
+}
+
+.boton-compartir,
+.boton-tema,
+.filtro-ultimos button,
+button.boton-limpiar,
+.subnav button,
+nav.tabs button {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .boton-compartir:hover {
@@ -210,7 +277,7 @@ header.app-header h1 {
   flex: none;
   border: 1px solid var(--color-borde);
   background: var(--color-bg);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   min-height: 2.25rem;
   min-width: 2.25rem;
   font-size: 1rem;
@@ -259,8 +326,11 @@ header.app-header h1 {
 
 .filtro-campo label,
 .filtro-etiqueta {
-  font-weight: 600;
-  color: var(--color-texto-tenue);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
 }
 
 .filtro-campo select,
@@ -269,7 +339,7 @@ header.app-header h1 {
 .filtro-campo input[type="number"] {
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   background: var(--color-bg);
   color: var(--color-texto);
   font-size: 0.9rem;
@@ -290,7 +360,7 @@ header.app-header h1 {
   gap: 0.3rem;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   background: var(--color-bg);
   color: var(--color-texto);
   font-size: 0.9rem;
@@ -326,7 +396,7 @@ header.app-header h1 {
   background: var(--color-bg-elevado);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--sombra-md);
 }
 
 .filtro-chips-lista {
@@ -365,7 +435,7 @@ header.app-header h1 {
   border: 1px solid var(--color-borde);
   background: var(--color-bg);
   color: var(--color-texto);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
   cursor: pointer;
@@ -387,7 +457,7 @@ button.boton-limpiar {
   border: 1px solid var(--color-borde);
   background: transparent;
   color: var(--color-texto-tenue);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   padding: 0.4rem 0.75rem;
   cursor: pointer;
   font-size: 0.85rem;
@@ -423,7 +493,7 @@ nav.tabs {
     top: 0;
     z-index: 10;
   }
-  main section[id] {
+  main [id^="seccion-"] {
     scroll-margin-top: 11rem;
   }
 }
@@ -450,10 +520,17 @@ nav.tabs button:focus-visible,
 .filtro-ultimos button:focus-visible,
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
-select:focus-visible {
+summary:focus-visible {
   outline: 2px solid var(--color-acento);
   outline-offset: 2px;
+}
+
+/* inputs y selects: borde de acento + anillo suave, en vez de outline */
+input:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--color-acento);
+  box-shadow: 0 0 0 3px var(--color-acento-suave);
 }
 
 main {
@@ -468,15 +545,7 @@ main {
 
 /* ---------- último partido ---------- */
 
-.tarjeta-ultimo {
-  background: var(--color-bg-elevado);
-  border: 1px solid var(--color-borde);
-  border-left: 4px solid var(--color-acento);
-  border-radius: var(--radio);
-  padding: 0.75rem;
-  margin-bottom: var(--espacio);
-}
-
+/* .tarjeta-ultimo vive adentro de un .panel: sin caja propia */
 .tarjeta-ultimo-header {
   display: flex;
   justify-content: space-between;
@@ -544,160 +613,389 @@ main {
   background: var(--color-perdido);
 }
 
-/* ---------- tarjetas de resumen ---------- */
+/* ---------- Resumen: paneles uniformes ---------- */
 
-.resumen-grid {
+/* cada vista es una pila de .panel con el mismo borde/radio/cabecera, y
+   poco aire entre ellos (1.25rem; antes ~9rem entre secciones). */
+.paneles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 0.6rem;
-  margin-bottom: var(--espacio);
+  gap: 1.25rem;
 }
 
-.resumen-tarjeta {
+.resumen__par {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 1.25rem;
+}
+
+.panel {
   background: var(--color-bg-elevado);
-  border: 1px solid var(--color-borde);
-  border-top: 3px solid var(--color-borde);
+  border: 1px solid var(--color-borde-suave);
   border-radius: var(--radio);
-  padding: 0.6rem;
-  text-align: center;
+  box-shadow: var(--sombra-xs);
+  padding: 1rem 1.25rem;
+  min-width: 0;
 }
 
-.resumen-tarjeta .valor {
-  font-weight: 700;
-  display: block;
-  font-size: 1.75rem;
-  line-height: 1.15;
-}
-
-/* fila "hero" (PJ / % victorias): el número que más importa de toda la
-   página, bien grande, tipo titular — pedido de la usuaria. */
-.resumen-grid-hero .resumen-tarjeta .valor {
-  font-size: 3rem;
-}
-
-.resumen-tarjeta .etiqueta {
-  color: var(--color-texto-tenue);
-  font-size: 0.75rem;
-}
-
-/* ---------- secciones de Resumen ---------- */
-
-/* Rachas / Jugadores destacados / Datos curiosos apilados y siempre abiertos
-   abrumaban la primera pantalla de Resumen (pedido de la usuaria). En vez de
-   plegarlos, cada uno es su propio <section> con aire alrededor, para que se
-   lean de a uno a medida que se scrollea en vez de todos juntos. */
-.resumen-bloque {
-  padding: 3rem 0;
-}
-
-/* la sección "Resultados" fue en algún momento "pantalla completa, como una
-   portada" (min-height:100vh + centrado vertical), pero con pocos partidos
-   cargados el contenido real queda bastante más corto que una pantalla
-   entera, y centrarlo dejaba un hueco enorme y vacío arriba Y abajo —
-   quedaba mal tanto en mobile como en desktop. Ahora es como cualquier otro
-   bloque de Resumen, solo con un poco menos de aire arriba (ya viene
-   pegado a los filtros). */
-.resumen-bloque-hero {
-  padding-top: 1.5rem;
-}
-
-/* ---------- jugadores destacados (Resumen) ---------- */
-
-.destacados-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.6rem;
-  margin-bottom: var(--espacio);
-}
-
-.tarjeta-destacado {
+.panel__cabecera {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.3rem;
-  background: var(--color-bg-elevado);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  padding: 0.7rem;
-  text-align: left;
+  gap: 0.15rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel__titulo,
+.eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.panel__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+}
+
+.enlace {
+  border: none;
+  background: none;
+  padding: 0;
   font: inherit;
-  color: inherit;
+  font-weight: 600;
+  color: var(--color-acento);
   cursor: pointer;
-  width: 100%;
 }
 
-.tarjeta-destacado:hover {
-  border-color: var(--color-acento);
+.enlace:hover {
+  text-decoration: underline;
 }
 
-.tarjeta-destacado-etiqueta {
+/* hero */
+
+.panel--hero .panel__cabecera {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero__forma {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.75rem;
   color: var(--color-texto-tenue);
 }
 
-.tarjeta-destacado-jugador {
-  display: flex;
-  align-items: center;
-  font-weight: 600;
+.hero__forma .forma-puntos {
+  margin-right: 0;
 }
 
-/* neutro por default (ni bueno ni malo: un récord, un rival, una fecha...).
-   El verde/rojo se reservan para cuando el dato en sí es una buena o mala
-   noticia (.valor-bueno/.valor-malo más abajo) — pedido de la usuaria, antes
-   todo era verde sin importar el significado. */
-.tarjeta-destacado-valor {
-  font-size: 1.35rem;
+.hero__principal {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 1rem 2.5rem;
+  padding-bottom: 1.1rem;
+}
+
+.hero__cifra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hero__valor {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__etiqueta {
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+/* G/E/P como una sola barra proporcional en vez de 3 tarjetas */
+.barra {
+  display: flex;
+  gap: 2px;
+  height: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barra > span {
+  min-width: 4px;
+}
+
+.barra__g {
+  background: var(--color-ganado);
+}
+.barra__e {
+  background: var(--color-empatado);
+}
+.barra__p {
+  background: var(--color-perdido);
+}
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+}
+
+.leyenda strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.leyenda__g strong {
+  color: var(--color-ganado);
+}
+.leyenda__e strong {
+  color: var(--color-empatado);
+}
+.leyenda__p strong {
+  color: var(--color-perdido);
+}
+
+/* tira de stats: celdas separadas por 1px (el gap deja ver el fondo) */
+.hero__stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  margin: 0;
+  background: var(--color-borde-suave);
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-sm);
+  overflow: hidden;
+}
+
+.hero__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--color-bg-elevado);
+}
+
+.hero__stat dt {
+  font-size: 0.7rem;
   font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.hero__stat dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__ultimo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-borde-suave);
+  font-size: 0.85rem;
+}
+
+.hero__ultimo-texto {
+  flex: 1 1 14rem;
+  min-width: 0;
+  color: var(--color-texto-tenue);
+}
+
+.hero__ultimo-texto strong {
   color: var(--color-texto);
 }
 
-.tarjeta-destacado-valor.valor-bueno {
-  color: var(--color-ganado);
+/* filas: etiqueta (+ detalle) a la izquierda, valor a la derecha */
+
+.filas {
+  display: flex;
+  flex-direction: column;
 }
 
-.tarjeta-destacado-valor.valor-malo {
-  color: var(--color-perdido);
+.filas--pie {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--color-borde-suave);
 }
 
-.tarjeta-destacado-valor.valor-empate {
-  color: var(--color-empatado);
+.fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.6rem 0;
+  border: none;
+  border-top: 1px solid var(--color-borde-suave);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
 
-.tarjeta-destacado-vacia {
-  cursor: default;
+.fila:first-child {
+  border-top: none;
+}
+
+.fila__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fila__etiqueta {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.fila__detalle {
+  font-size: 0.75rem;
   color: var(--color-texto-tenue);
 }
 
-.tarjeta-destacado-vacia:hover {
-  border-color: var(--color-borde);
+/* neutro por default (un récord, un rival, una fecha...). El verde/rojo se
+   reservan para cuando el dato en sí es una buena o mala noticia. */
+.fila__valor {
+  flex: none;
+  max-width: 55%;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-/* G/E/P: mismos colores que ya se usan para marcar resultado en Partidos/Ficha
-   (.resultado-G/E/P), para que el ojo conecte "verde = ganado" en todos lados. */
-.tarjeta-g {
-  border-top-color: var(--color-ganado);
+.fila__valor--jugador {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
-.tarjeta-g .valor {
+
+.valor-bueno {
   color: var(--color-ganado);
 }
-.tarjeta-e {
-  border-top-color: var(--color-empatado);
+.valor-malo {
+  color: var(--color-perdido);
 }
-.tarjeta-e .valor {
+.valor-empate {
   color: var(--color-empatado);
 }
-.tarjeta-p {
-  border-top-color: var(--color-perdido);
+
+.fila--boton {
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
-.tarjeta-p .valor {
-  color: var(--color-perdido);
+
+.fila--boton:hover .fila__valor {
+  color: var(--color-acento);
+}
+
+/* podios: una columna por categoría */
+
+.podios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 1rem 2rem;
+}
+
+.podio__titulo {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-texto-tenue);
+}
+
+.podio__lista {
+  margin: 0 -0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+.podio__fila {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-texto);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.podio__fila:hover {
+  background: var(--color-bg-sutil);
+}
+
+.podio__medalla {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.podio__nombre {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.podio__nombre-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podio__valor {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.podio__titulo small {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-texto-suave);
+}
+
+.podio__lista li:first-child .podio__fila {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.podio__vacio {
+  padding: 0.35rem 0.4rem;
+  color: var(--color-texto-suave);
 }
 
 /* ---------- tablas ---------- */
 
 .tabla-wrap {
   overflow-x: auto;
-  border: 1px solid var(--color-borde);
+  border: 1px solid var(--color-borde-suave);
+  box-shadow: var(--sombra-xs);
   border-radius: var(--radio);
 }
 
@@ -713,7 +1011,8 @@ td {
   padding: 0.5rem 0.6rem;
   text-align: center;
   white-space: nowrap;
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: 1px solid var(--color-borde-suave);
+  font-variant-numeric: tabular-nums;
 }
 
 th:first-child,
@@ -724,7 +1023,12 @@ td:first-child {
 thead th {
   position: sticky;
   top: 0;
-  background: var(--color-bg-elevado);
+  background: var(--color-bg-sutil);
+  color: var(--color-texto-tenue);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
   user-select: none;
   z-index: 1;
@@ -785,8 +1089,36 @@ th:first-child {
   background: var(--color-bg-elevado);
 }
 
+thead th:first-child {
+  background: var(--color-bg-sutil);
+}
+
 tbody tr:hover td {
-  background: color-mix(in srgb, var(--color-acento) 8%, var(--color-bg-elevado));
+  background: var(--color-bg-sutil);
+}
+
+/* scrollbar fina (solo WebKit) en contenedores con scroll propio */
+.panel .tabla-wrap {
+  border-radius: var(--radio-sm);
+  box-shadow: none;
+}
+
+.tabla-wrap::-webkit-scrollbar,
+.filtros-panel::-webkit-scrollbar,
+.filtro-chips-lista::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.tabla-wrap::-webkit-scrollbar-thumb,
+.filtros-panel::-webkit-scrollbar-thumb,
+.filtro-chips-lista::-webkit-scrollbar-thumb {
+  background: var(--color-borde);
+  border-radius: 999px;
+}
+.tabla-wrap::-webkit-scrollbar-track,
+.filtros-panel::-webkit-scrollbar-track,
+.filtro-chips-lista::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .resultado {
@@ -808,11 +1140,12 @@ tbody tr:hover td {
 /* ---------- partidos ---------- */
 
 .partido {
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  background: var(--color-bg-elevado);
-  margin-bottom: 0.6rem;
+  border-top: 1px solid var(--color-borde-suave);
   overflow: hidden;
+}
+
+.partido:first-child {
+  border-top: none;
 }
 
 .partido > button.partido-resumen {
@@ -859,16 +1192,21 @@ tbody tr:hover td {
 /* ---------- gráficos ---------- */
 
 .grafico-card {
-  background: var(--color-bg-elevado);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  padding: 0.75rem;
-  margin-bottom: var(--espacio);
+  min-width: 0;
 }
 
 .grafico-card h3 {
   margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-texto-tenue);
+}
+
+/* varios gráficos de un mismo panel: en fila cuando entran */
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1.25rem;
 }
 
 /* alto fijo vía contenedor + Chart.js con maintainAspectRatio:false (ver
@@ -965,23 +1303,6 @@ footer.app-footer {
   color: var(--color-acento);
 }
 
-/* separador visual entre secciones apiladas dentro de una misma vista */
-main section + section {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--color-borde);
-}
-
-/* línea chica debajo del <h2> de una sección explicando qué se va a ver
-   (pedido de la usuaria): discreta a propósito, no compite con el título.
-   Sin max-width: con uno en "ch" se cortaba a la mitad del ancho del resto
-   del contenido (tablas, grillas) y quedaba descolgado. */
-.seccion-descripcion {
-  margin: 0.2rem 0 1rem;
-  color: var(--color-texto-tenue);
-  font-size: 0.85rem;
-}
-
 .ficha-encabezado {
   display: flex;
   align-items: center;
@@ -994,51 +1315,9 @@ main section + section {
   font-size: 0.85rem;
 }
 
-/* ---------- 2do/3er puesto del podio (Resumen → Jugadores destacados) ---------- */
-
-/* envuelve la tarjeta grande (líder) + la lista chica de abajo como una sola
-   celda del grid de .destacados-grid, sin heredar el fondo/borde de
-   .tarjeta-destacado (ver comentario en ui.js). */
-.tarjeta-destacado-grupo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.tarjeta-destacado-subrank {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.tarjeta-destacado-subrank button {
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  font-size: 0.8rem;
-  color: var(--color-texto-tenue);
-  background: none;
-  border: none;
-  padding: 0.15rem 0.3rem;
-  cursor: pointer;
-  border-radius: var(--radio);
-}
-
-.tarjeta-destacado-subrank button:hover {
-  background: color-mix(in srgb, var(--color-acento) 10%, transparent);
-  color: var(--color-texto);
-}
-
 /* ---------- ficha de jugador: tarjeta "tipo pro" + logros ---------- */
 
 .ficha-card {
-  background: var(--color-bg-elevado);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  padding: 1rem;
   margin-bottom: var(--espacio);
 }
 
@@ -1062,7 +1341,7 @@ main section + section {
 .ficha-stat-chip {
   background: var(--color-bg);
   border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
   padding: 0.3rem 0.6rem;
   font-size: 0.85rem;
   color: var(--color-texto-tenue);
@@ -1083,7 +1362,7 @@ main section + section {
 }
 
 .badge {
-  background: color-mix(in srgb, var(--color-acento) 14%, transparent);
+  background: color-mix(in srgb, var(--color-acento) 17%, transparent);
   color: var(--color-acento);
   border-radius: 999px;
   padding: 0.25rem 0.7rem;
@@ -1192,12 +1471,21 @@ main section + section {
     right: 0;
     top: 100%;
     flex-direction: column;
+    /* nowrap: con max-height, un column+wrap reparte los campos en columnas
+       extra hacia la derecha en vez de scrollear por dentro */
+    flex-wrap: nowrap;
     align-items: stretch;
     gap: 1rem;
     background: var(--color-bg-elevado);
     border-bottom: 1px solid var(--color-borde);
     padding: var(--espacio);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--sombra-md);
+    /* tope firme: barra + panel abierto nunca pasan del 30% del alto
+       (48px = alto aprox. de la barra con el botón "Filtros") */
+    max-height: calc(30vh - 48px);
+    max-height: calc(30dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .filtros.filtros-abierto .filtros-panel {
     display: flex;
@@ -1213,25 +1501,37 @@ main section + section {
   .filtro-dropdown-panel {
     max-width: calc(100vw - 2rem);
   }
-  main section[id] {
+  main [id^="seccion-"] {
     scroll-margin-top: 3.2rem;
   }
 
-  /* las secciones de Resumen (Rachas/Destacados/Curiosos) ya traen su propio
-     "aire" (.resumen-bloque, 3rem arriba y abajo); sumado al margen+padding
-     genérico de "main section + section" para el divisor, en mobile el hueco
-     entre una sección y la siguiente quedaba enorme sin nada adentro.
-     Achicado solo acá: en desktop con más alto de pantalla no se nota tanto. */
-  .resumen-bloque {
-    padding: 1.75rem 0;
+  .paneles,
+  .resumen__par {
+    gap: 0.75rem;
   }
-  .resumen-bloque-hero {
-    padding-top: 1rem;
+  .panel {
+    padding: 0.85rem 1rem;
   }
-  main section + section {
-    margin-top: 1rem;
+  .hero__principal {
+    grid-template-columns: auto auto;
+    gap: 0.9rem 1.75rem;
   }
-
+  .hero__resultados {
+    grid-column: 1 / -1;
+  }
+  .hero__valor {
+    font-size: 2.5rem;
+  }
+  .hero__stats {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .hero__stat {
+    grid-column: span 2;
+    padding: 0.5rem 0.65rem;
+  }
+  .hero__stat:nth-child(n + 4) {
+    grid-column: span 3;
+  }
   /* pestañas fijas abajo (como cualquier app nativa): en el celular, que es
      donde se usa esto en la práctica, se llega mucho mejor con el pulgar que
      arriba de todo — más todavía con los filtros ocupando esa zona también. */
@@ -1263,4 +1563,8 @@ main section + section {
   body {
     padding-bottom: calc(2.9rem + env(safe-area-inset-bottom, 0));
   }
+}
+
+#ficha-selector .filtro-campo {
+  max-width: 22rem;
 }
