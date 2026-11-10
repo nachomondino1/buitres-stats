@@ -23,6 +23,13 @@ import {
   tablaJugadores,
   analisisRival,
   historialContraRival,
+  resultadosDelRival,
+  entretiempoVsFinal,
+  resultadosPorHora,
+  tarjetasEquipo,
+  plantelEquipo,
+  golesPelotaParada,
+  extremosEquipo,
   normalizarNombreEquipo,
   proximoPartido,
   resumenTorneo,
@@ -562,6 +569,21 @@ test("historialContraRival: cruza por nombre normalizado; null si nunca lo enfre
   assert.equal(historialContraRival(data, "NUNCA VISTO"), null);
 });
 
+test("resultadosDelRival: separa ganados/empatados/perdidos y cruza con nuestros partidos", () => {
+  const data = { partidos: [{ fecha: "2026-01-10", rival: "Celta F.C.", gf: 2, gc: 1, resultado: "G" }] };
+  const prox = { partidos_rival: [
+    { fecha: "2026-03-01", contra: "CELTA FC", gf: 0, gc: 2 },
+    { fecha: "2026-03-08", contra: "Otro", gf: 3, gc: 0 },
+    { fecha: "2026-03-15", contra: "Tercero", gf: 1, gc: 1 },
+  ] };
+  const r = resultadosDelRival(data, prox);
+  assert.deepEqual(r.ganados.map((f) => f.contra), ["Otro"]);
+  assert.deepEqual(r.empatados.map((f) => f.contra), ["Tercero"]);
+  assert.deepEqual(r.perdidos.map((f) => f.contra), ["CELTA FC"]);
+  assert.equal(r.perdidos[0].nuestro.g, 1);
+  assert.equal(r.ganados[0].nuestro, null);
+});
+
 test("analisisRival: ataque alto y defensa sólida -> rival completo, bullets en tono malo", () => {
   // 4 partidos: 14 GF (3,5/pj, ratio 1,4) y 2 GC (0,5/pj, ratio 0,2)
   const a = analisisRival(torneoConProximo([pr(4, 0), pr(3, 1), pr(4, 0), pr(3, 1)]));
@@ -596,4 +618,59 @@ test("analisisRival: sin partidos con resultado no inventa ataque/defensa; avisa
 
 test("analisisRival: null si el torneo no tiene próximo partido", () => {
   assert.equal(analisisRival({ tabla: tablaRival, proximo: null }), null);
+});
+
+// ---------------- vista Equipo ----------------
+const dEq = {
+  partidos: [
+    { id_partido: 1, hora: "14:00", gf: 3, gc: 1, gf_1t: 0, gc_1t: 1, resultado: "G" }, // remontada
+    { id_partido: 2, hora: "14:00", gf: 1, gc: 2, gf_1t: 1, gc_1t: 0, resultado: "P" }, // nos dieron vuelta
+    { id_partido: 3, hora: "16:00", gf: 2, gc: 2, gf_1t: 1, gc_1t: 1, resultado: "E" },
+    { id_partido: 4, hora: null, gf: 5, gc: 0, gf_1t: 2, gc_1t: 0, resultado: "G" },
+  ],
+  alineaciones: [
+    { id_partido: 1, id_jugador: "A", amarillas: 1, rojas: 0 }, { id_partido: 1, id_jugador: "B", amarillas: 0, rojas: 1 },
+    { id_partido: 2, id_jugador: "A", amarillas: 0, rojas: 0 },
+  ],
+  goles: [
+    { id_partido: 1, tipo_gol: "GF", fuente: "Corner" }, { id_partido: 1, tipo_gol: "GF", fuente: "Contraataque" },
+    { id_partido: 1, tipo_gol: "GF", fuente: "Sin dato" }, { id_partido: 1, tipo_gol: "GC", fuente: "Penal" },
+  ],
+};
+const todosEq = new Set([1, 2, 3, 4]);
+
+test("entretiempoVsFinal: estado al descanso vs resultado, remontadas y vueltas", () => {
+  const r = entretiempoVsFinal(dEq, todosEq);
+  assert.deepEqual([r.ganando.pj, r.ganando.g, r.ganando.p], [2, 1, 1]);
+  assert.deepEqual([r.empatando.pj, r.empatando.e], [1, 1]);
+  assert.deepEqual([r.perdiendo.pj, r.perdiendo.g], [1, 1]);
+  assert.equal(r.remontadas, 1);
+  assert.equal(r.dadosVuelta, 1);
+});
+
+test("resultadosPorHora: agrupa por hora y deja afuera los sin hora", () => {
+  const r = resultadosPorHora(dEq, todosEq);
+  assert.deepEqual(r.map((x) => x.hora), ["14:00", "16:00"]);
+  assert.deepEqual([r[0].pj, r[0].g, r[0].p, r[0].gf, r[0].gc], [2, 1, 1, 4, 3]);
+});
+
+test("tarjetasEquipo y plantelEquipo", () => {
+  assert.deepEqual(tarjetasEquipo(dEq, todosEq), { pj: 4, amarillas: 1, rojas: 1, partidosConTarjeta: 1 });
+  const p = plantelEquipo(dEq, todosEq);
+  assert.deepEqual([p.promedio, p.min, p.max, p.distintos], [1.5, 1, 2, 2]);
+  assert.equal(plantelEquipo(dEq, new Set()), null);
+});
+
+test("golesPelotaParada: ignora los goles sin fuente", () => {
+  const r = golesPelotaParada(dEq, todosEq);
+  assert.deepEqual([r.gf.parada, r.gf.conDato, r.gf.pct], [1, 2, 0.5]);
+  assert.deepEqual([r.gc.parada, r.gc.pct], [1, 1]);
+});
+
+test("extremosEquipo: goleada, derrota y partido con más goles", () => {
+  const r = extremosEquipo(dEq, todosEq);
+  assert.equal(r.mayorGoleada.id_partido, 4);
+  assert.equal(r.peorDerrota.id_partido, 2);
+  assert.equal(r.masGoles.id_partido, 4);
+  assert.equal(extremosEquipo(dEq, new Set([4])).peorDerrota, null);
 });

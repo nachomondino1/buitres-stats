@@ -19,6 +19,13 @@ import {
   tablaJugadores,
   analisisRival,
   historialContraRival,
+  resultadosDelRival,
+  entretiempoVsFinal,
+  resultadosPorHora,
+  tarjetasEquipo,
+  plantelEquipo,
+  golesPelotaParada,
+  extremosEquipo,
   proximoPartido,
   resumenTorneo,
   topJugadoresPorCategoria,
@@ -93,6 +100,7 @@ const estado = {
   // (según el orden activo); "Ver todos" la expande. A propósito NO vive en
   // la URL: es una preferencia de visualización, como el comparador.
   tablaJugadoresCompleta: false,
+  torneoElegido: null, // competencia mostrada en Torneos; null = el más nuevo
   // selección del comparador de 2 jugadores: a propósito NO vive en la URL
   // (a diferencia de filtros/orden/ficha) — impacto/esfuerzo no lo amerita
   // para una comparación que se arma y se tira, ver DECISIONS.md.
@@ -567,6 +575,12 @@ function renderResumen(cont, ids) {
   }
   const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
+    ${renderSubnav([
+      ["seccion-resultados", "Resultados"],
+      ["seccion-destacados", "Destacados"],
+      ["seccion-rachas", "Rachas"],
+      ["seccion-curiosos", "Datos curiosos"],
+    ])}
     <div class="paneles">
       ${renderHeroResumen(r, forma)}
       ${renderJugadoresDestacados(ids)}
@@ -582,7 +596,7 @@ function renderResumen(cont, ids) {
   for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
-  cont.querySelector("[data-ir-partidos]")?.addEventListener("click", irAPartidos);
+  for (const boton of cont.querySelectorAll("[data-ir-partidos]")) boton.addEventListener("click", irAPartidos);
 }
 
 // Resumen = una pila de "paneles" uniformes (mismo borde, radio, cabecera en
@@ -647,7 +661,22 @@ function filaJugador(etiqueta, detalle, jugador) {
 // dónde, y un análisis breve armado con sus resultados en el torneo (ver
 // analisisRival() en stats.js). Independiente de los filtros. Los datos vienen de torneos/*.json; si la foto es vieja y el
 // partido ya pasó, el panel no aparece (ver proximoPartido()).
+const fmtDiaCorto = new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const fmtDiaLargo = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+
+// contra quién ganó/empató/perdió el rival en su torneo.
+function renderResultadosDelRival(proximo) {
+  const r = resultadosDelRival(estado.data, proximo);
+  const grupos = [["Le ganó a", "g", r.ganados], ["Empató con", "e", r.empatados], ["Perdió con", "p", r.perdidos]]
+    .filter(([, , filas]) => filas.length);
+  if (!grupos.length) return "";
+  const item = (f) => `<li><span>${f.contra}</span><strong>${f.gf}-${f.gc}</strong></li>`;
+  return `<div class="rivalref">${grupos.map(([titulo, clave, filas]) => `
+    <div class="rivalref__grupo rivalref__grupo--${clave}">
+      <span class="eyebrow">${titulo} (${filas.length})</span>
+      <ul>${filas.map(item).join("")}</ul>
+    </div>`).join("")}</div>`;
+}
 
 function renderProximoPartido() {
   const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD en hora local
@@ -673,6 +702,7 @@ function renderProximoPartido() {
     ${items ? `<ul class="analisis">${items}</ul>` : ""}
     ${a.conclusion ? `<p class="analisis__conclusion">${a.conclusion}</p>` : ""}
     ${antecedentes}
+    ${renderResultadosDelRival(proximo)}
     <p class="analisis__nota">Análisis automático con los resultados del torneo${a.aviso ? `. ${a.aviso}` : "."} Datos al ${fmtFechaISO(torneo.actualizado)}.</p>
   `;
   return panel("Próximo partido", detalle, cuerpo, { clase: "panel--proximo" });
@@ -697,6 +727,13 @@ function renderHeroResumen(r, forma) {
       <button type="button" class="enlace" data-ir-partidos>Ver partidos →</button>
     </div>
   ` : "";
+  const sig = proximoPartido(estado.data, new Date().toLocaleDateString("en-CA"));
+  const proximo = sig ? `
+    <div class="hero__ultimo hero__ultimo--proximo">
+      <span class="eyebrow">Próximo partido</span>
+      <span class="hero__ultimo-texto">${fmtDiaCorto.format(new Date(`${sig.proximo.fecha}T00:00:00Z`))} · ${sig.proximo.hora} · ${sig.torneo.competencia} · <strong>Los Buitres vs ${sig.proximo.rival}</strong></span>
+      <button type="button" class="enlace" data-ir-partidos>Ver análisis →</button>
+    </div>` : "";
   const cuerpo = `
     <div class="hero__principal">
       <div class="hero__cifra"><span class="hero__valor">${r.pj}</span><span class="hero__etiqueta">partidos</span></div>
@@ -714,10 +751,11 @@ function renderHeroResumen(r, forma) {
       ${stats.map(([etiqueta, valor]) => `<div class="hero__stat"><dt>${etiqueta}</dt><dd>${valor}</dd></div>`).join("")}
     </dl>
     ${ultimo}
+    ${proximo}
   `;
   const puntos = forma.length ? `<span class="hero__forma">Últimos ${forma.length} ${puntosForma(forma)}</span>` : "";
   return `
-    <article class="panel panel--hero">
+    <article class="panel panel--hero" id="seccion-resultados">
       <header class="panel__cabecera">
         <h2 class="panel__titulo">Resultados</h2>
         ${puntos}
@@ -745,6 +783,7 @@ function renderRachasHistoricas(ids, rachaActual) {
     grupoFilas("Ahora", "neutro", [filaRachaActual(rachaActual)]) +
       grupoFilas("Lo bueno", "bueno", deTono("bueno")) +
       grupoFilas("Lo no tan bueno", "malo", deTono("malo")),
+    { id: "seccion-rachas" },
   );
 }
 
@@ -790,6 +829,7 @@ function renderJugadoresDestacados(ids) {
     "Jugadores destacados",
     "Quién lidera cada estadística: el podio y, abajo, quiénes vienen detrás (4.º y 5.º). Tocá un jugador para ver su ficha.",
     `<div class="podios">${podios.map(([etiqueta, unidad, top]) => podio(etiqueta, unidad, top)).join("")}</div>${filaJugadorEnRacha(racha)}`,
+    { id: "seccion-destacados" },
   );
 }
 
@@ -896,6 +936,7 @@ function renderDatosCuriosos(ids) {
     grupoFilas("Lo bueno", "bueno", grupos.bueno) +
       grupoFilas("Lo no tan bueno", "malo", grupos.malo) +
       grupoFilas("Curiosidades", "neutro", grupos.neutro),
+    { id: "seccion-curiosos" },
   );
 }
 
@@ -1012,44 +1053,132 @@ function renderLeyendaColumnas(columnas) {
   `;
 }
 
-// ---------------- vista Equipo: Historial vs rivales + Gráficos ----------------
+// ---------------- vista Equipo: Gráficos de goles (el historial vs rivales pasó a Partidos) ----------------
+
+const pl = (n, una, varias) => (n === 1 ? una : varias);
+const fmtPct0 = (x) => `${Math.round(x * 100)}%`;
+
+function tablaGEP(primera, filas) {
+  return `
+    <div class="tabla-wrap">
+      <table class="tabla-torneo">
+        <thead><tr><th>${primera}</th><th>PJ</th><th>G</th><th>E</th><th>P</th></tr></thead>
+        <tbody>${filas.map(([etiqueta, r]) => `<tr><td>${etiqueta}</td><td>${r.pj}</td><td>${r.g}</td><td>${r.e}</td><td>${r.p}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+}
+
+function panelEntretiempo(ids) {
+  const r = entretiempoVsFinal(estado.data, ids);
+  const cuerpo = tablaGEP("Al descanso íbamos", [
+    ["Ganando", r.ganando], ["Empatando", r.empatando], ["Perdiendo", r.perdiendo],
+  ]) + `<p class="analisis__nota">Remontamos ${r.remontadas} ${pl(r.remontadas, "partido", "partidos")} (perdíamos al descanso y no perdimos). Nos dieron vuelta en ${r.dadosVuelta} (ganábamos y no ganamos).</p>`;
+  return panel("Entretiempo", "Cómo terminamos según cómo íbamos al descanso.", cuerpo, { id: "seccion-entretiempo" });
+}
+
+function panelHorarios(ids) {
+  const filas = resultadosPorHora(estado.data, ids);
+  if (filas.length === 0) return "";
+  const cuerpo = `
+    <div class="tabla-wrap">
+      <table class="tabla-torneo">
+        <thead><tr><th>Horario</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th></tr></thead>
+        <tbody>${filas.map((r) => `<tr><td>${r.hora}</td><td>${r.pj}</td><td>${r.g}</td><td>${r.e}</td><td>${r.p}</td><td>${r.gf}</td><td>${r.gc}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+  return panel("Por horario", "Cómo nos va según a qué hora arranca el partido.", cuerpo, { id: "seccion-horarios" });
+}
+
+function panelDatosEquipo(ids) {
+  const ex = extremosEquipo(estado.data, ids);
+  const partido = (p) => `${fmtFechaISO(p.fecha)} · vs ${p.rival}`;
+  const records = [
+    ex.mayorGoleada && fila("Mayor goleada", partido(ex.mayorGoleada), `${ex.mayorGoleada.gf}-${ex.mayorGoleada.gc}`, "bueno"),
+    ex.masGoles && fila("Partido con más goles", partido(ex.masGoles), `${ex.masGoles.gf}-${ex.masGoles.gc}`),
+    ex.peorDerrota && fila("Peor derrota", partido(ex.peorDerrota), `${ex.peorDerrota.gf}-${ex.peorDerrota.gc}`, "malo"),
+  ].filter(Boolean);
+
+  const t = tarjetasEquipo(estado.data, ids);
+  const pla = plantelEquipo(estado.data, ids);
+  const disciplina = [
+    fila("Tarjetas amarillas", t.pj ? `${(t.amarillas / t.pj).toFixed(2).replace(".", ",")} por partido` : "", t.amarillas),
+    fila("Tarjetas rojas", "", t.rojas),
+    fila("Partidos con tarjeta", "", `${t.partidosConTarjeta} de ${t.pj}`),
+    pla && fila("Jugadores por partido", `entre ${pla.min} y ${pla.max}`, pla.promedio.toFixed(1).replace(".", ",")),
+    pla && fila("Jugadores que pasaron por el equipo", "", pla.distintos),
+  ].filter(Boolean);
+
+  const pp = golesPelotaParada(estado.data, ids);
+  const marcamos = [
+    pp.gf.conDato > 0 && fila("Goles a favor de pelota parada", `córner, tiro libre, penal o lateral · ${pp.gf.parada} de ${pp.gf.conDato} con fuente cargada`, fmtPct0(pp.gf.pct)),
+    pp.gc.conDato > 0 && fila("Goles en contra de pelota parada", `${pp.gc.parada} de ${pp.gc.conDato} con fuente cargada`, fmtPct0(pp.gc.pct)),
+  ].filter(Boolean);
+
+  const cuerpo = grupoFilas("Récords", "neutro", records) + grupoFilas("Tarjetas y plantel", "neutro", disciplina) + grupoFilas("Pelota parada", "neutro", marcamos);
+  return panel("Datos del equipo", "Récords, disciplina, plantel y de dónde vienen los goles.", cuerpo, { id: "seccion-datos-equipo" });
+}
 
 function renderEquipo(cont, ids) {
+  if (ids.size === 0) {
+    cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
+    return;
+  }
+  const horarios = panelHorarios(ids);
   cont.innerHTML = `
     ${renderSubnav([
-      ["seccion-historial-rivales", "Historial"],
+      ["seccion-entretiempo", "Entretiempo"],
+      ...(horarios ? [["seccion-horarios", "Horarios"]] : []),
+      ["seccion-datos-equipo", "Datos del equipo"],
       ["seccion-graficos-equipo", "Goles"],
     ])}
     <div class="paneles">
-      ${panel("Historial vs rivales", "El acumulado de todos los enfrentamientos contra cada rival: partidos jugados, resultados y goles.",
-        `<div id="historial-rivales-contenido"></div>`, { id: "seccion-historial-rivales" })}
+      <div class="resumen__par">
+        ${panelEntretiempo(ids)}
+        ${horarios}
+      </div>
+      ${panelDatosEquipo(ids)}
       ${panel("Goles", "Cómo evolucionaron los goles a favor y en contra, de dónde vinieron y en qué momento del partido se convirtieron.",
         `<div id="graficos-equipo-contenido" class="graficos"></div>`, { id: "seccion-graficos-equipo" })}
     </div>
   `;
   activarScrollASecciones(cont);
-  renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
   renderGraficosEquipoContenido(cont.querySelector("#graficos-equipo-contenido"), ids);
 }
 
 // ---------------- vista Partidos: último partido (completo) + listado ----------------
 // Se separó de Equipo: el log de partidos (resultado + alineación + goles)
 // no es una agregación de equipo ni de jugador, es su propia cosa (pedido de
-// la usuaria). Sin subnav: es una sola sección, no hace falta saltar entre
-// varias.
+// la usuaria). Tiene subnav porque, con el historial vs rivales al final
+// (se usa poco: casi nunca se repite rival), la vista es larga.
 
 function renderPartidosVista(cont, ids) {
+  const hayTorneos = torneosVisibles(estado.data, estado.filtros.competencia).length > 0;
   cont.innerHTML = `
+    ${renderSubnav([
+      ["seccion-ultimo-proximo", "Último y próximo"],
+      ...(hayTorneos ? [["seccion-torneos", "Torneos"]] : []),
+      ["seccion-partidos", "Partidos"],
+      ["seccion-historial-rivales", "Historial vs rivales"],
+    ])}
     <div class="paneles">
-      <div class="resumen__par">
+      <div class="resumen__par" id="seccion-ultimo-proximo">
         ${renderTarjetaUltimoPartido()}
         ${renderProximoPartido()}
       </div>
       ${renderTorneos()}
       ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
+      ${panel("Historial vs rivales", "El acumulado contra cada rival: partidos jugados, resultados y goles.",
+        `<div id="historial-rivales-contenido"></div>`, { id: "seccion-historial-rivales" })}
     </div>
   `;
+  activarScrollASecciones(cont);
+  cont.querySelector("#selector-torneo")?.addEventListener("change", (e) => {
+    estado.torneoElegido = e.target.value;
+    renderVistaActual();
+    document.getElementById("seccion-torneos")?.scrollIntoView({ block: "nearest" });
+  });
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
+  renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
 
   // "Ver nuestros partidos" de un torneo: lo deja como competencia filtrada y
   // baja a la lista de partidos, que ya respeta ese filtro.
@@ -1073,11 +1202,22 @@ const COLUMNAS_TORNEO = [
   ["PP", "Partidos perdidos"], ["GF", "Goles a favor"], ["GC", "Goles en contra"], ["Dif", "Diferencia de gol"],
 ];
 
+// Un solo panel con selector de torneo (por defecto el más nuevo, que es el
+// primero de data.torneos), en vez de una tabla por torneo siempre desplegada.
 function renderTorneos() {
-  return torneosVisibles(estado.data, estado.filtros.competencia).map(panelTorneo).join("");
+  const visibles = torneosVisibles(estado.data, estado.filtros.competencia);
+  if (visibles.length === 0) return "";
+  const torneo = visibles.find((t) => t.competencia === estado.torneoElegido) ?? visibles[0];
+  const selector = visibles.length > 1 ? `
+    <label class="torneo__selector">Torneo
+      <select id="selector-torneo">
+        ${visibles.map((t) => `<option value="${t.competencia}"${t === torneo ? " selected" : ""}>${t.competencia} · Zona ${t.categoria}</option>`).join("")}
+      </select>
+    </label>` : "";
+  return panelTorneo(torneo, selector);
 }
 
-function panelTorneo(torneo) {
+function panelTorneo(torneo, selector = "") {
   const r = resumenTorneo(torneo);
   const resumen = r
     ? `Puesto ${r.pos}.º de ${r.total} · ${r.pts} pts · ${r.pg}G ${r.pe}E ${r.pp}P · GF ${r.gf} · GC ${r.gc}`
@@ -1090,6 +1230,7 @@ function panelTorneo(torneo) {
       <td>${f.gf}</td><td>${f.gc}</td><td>${signo(f.dif)}</td>
     </tr>`).join("");
   const cuerpo = `
+    ${selector}
     <div class="tabla-wrap">
       <table class="tabla-torneo">
         <thead><tr><th>Equipo</th>${COLUMNAS_TORNEO.map(([sigla, glosario]) => `<th><abbr title="${glosario}">${sigla}</abbr></th>`).join("")}</tr></thead>
@@ -1101,7 +1242,7 @@ function panelTorneo(torneo) {
       ${r ? `<button type="button" class="enlace" data-ver-partidos-torneo="${torneo.competencia}">Ver nuestros partidos →</button>` : ""}
     </div>
   `;
-  return panel(`${torneo.competencia} <small>Zona ${torneo.categoria}</small>`, resumen, cuerpo);
+  return panel(`Torneo: ${torneo.competencia} <small>Zona ${torneo.categoria}</small>`, resumen, cuerpo, { id: "seccion-torneos" });
 }
 
 // una fila por rival enfrentado, no solo el más repetido (eso ya lo cubre

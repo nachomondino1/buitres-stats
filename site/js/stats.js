@@ -113,6 +113,25 @@ export function historialContraRival(data, nombreRival) {
   };
 }
 
+/** Contra quién ganó, empató y perdió el rival del próximo partido en su torneo
+ * (más nuevo primero), y si nosotros ya enfrentamos a esos mismos equipos: da una
+ * referencia común ("a Fulano le ganó 3-0 y nosotros le ganamos 1-0"). */
+export function resultadosDelRival(data, proximo) {
+  const filas = (proximo.partidos_rival ?? [])
+    .slice()
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .map((p) => ({
+      fecha: p.fecha, contra: p.contra, gf: p.gf, gc: p.gc,
+      resultado: p.gf > p.gc ? "G" : p.gf < p.gc ? "P" : "E",
+      nuestro: historialContraRival(data, p.contra),
+    }));
+  return {
+    ganados: filas.filter((f) => f.resultado === "G"),
+    empatados: filas.filter((f) => f.resultado === "E"),
+    perdidos: filas.filter((f) => f.resultado === "P"),
+  };
+}
+
 const UMBRAL_ALTO = 1.25; // vs la media del torneo
 const UMBRAL_BAJO = 0.75;
 const MUESTRA_CHICA = 5; // partidos con marcador por debajo de los cuales se avisa
@@ -489,6 +508,108 @@ export function golesPorTiempo(data, idsPartidos) {
     gc2t += p.gc_2t;
   }
   return { gf1t, gc1t, gf2t, gc2t };
+}
+
+// ---------------- vista Equipo: cómo jugamos ----------------
+
+const delSet = (data, ids) => data.partidos.filter((p) => ids.has(p.id_partido));
+const conteoGEP = (partidos) => ({
+  pj: partidos.length,
+  g: partidos.filter((p) => p.resultado === "G").length,
+  e: partidos.filter((p) => p.resultado === "E").length,
+  p: partidos.filter((p) => p.resultado === "P").length,
+});
+
+/** Cómo terminamos según cómo íbamos al entretiempo (marcador 1T). `ganando`,
+ * `empatando` y `perdiendo` -> {pj,g,e,p}. Dos totales útiles: `remontadas`
+ * (íbamos perdiendo y terminamos G o E) y `dadosVuelta` (íbamos ganando y
+ * terminamos E o P). */
+export function entretiempoVsFinal(data, ids) {
+  const partidos = delSet(data, ids);
+  const estado = (p) => (p.gf_1t > p.gc_1t ? "ganando" : p.gf_1t < p.gc_1t ? "perdiendo" : "empatando");
+  const por = (k) => conteoGEP(partidos.filter((p) => estado(p) === k));
+  const r = { ganando: por("ganando"), empatando: por("empatando"), perdiendo: por("perdiendo") };
+  return {
+    ...r,
+    remontadas: r.perdiendo.g + r.perdiendo.e,
+    dadosVuelta: r.ganando.e + r.ganando.p,
+  };
+}
+
+/** Resultados por horario de inicio (partidos sin hora cargada quedan afuera),
+ * del más temprano al más tarde. */
+export function resultadosPorHora(data, ids) {
+  const grupos = new Map();
+  for (const p of delSet(data, ids)) {
+    if (!p.hora) continue;
+    if (!grupos.has(p.hora)) grupos.set(p.hora, []);
+    grupos.get(p.hora).push(p);
+  }
+  return [...grupos.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([hora, ps]) => ({
+      hora, ...conteoGEP(ps),
+      gf: ps.reduce((a, p) => a + p.gf, 0), gc: ps.reduce((a, p) => a + p.gc, 0),
+    }));
+}
+
+/** Tarjetas del equipo (suma de las de cada jugador en cada partido). */
+export function tarjetasEquipo(data, ids) {
+  const al = data.alineaciones.filter((a) => ids.has(a.id_partido));
+  const porPartido = new Map();
+  for (const a of al) porPartido.set(a.id_partido, (porPartido.get(a.id_partido) ?? 0) + a.amarillas + a.rojas);
+  return {
+    pj: ids.size,
+    amarillas: al.reduce((a, x) => a + x.amarillas, 0),
+    rojas: al.reduce((a, x) => a + x.rojas, 0),
+    partidosConTarjeta: [...porPartido.values()].filter((n) => n > 0).length,
+  };
+}
+
+/** Cuánta gente juega por partido: promedio, mínimo y máximo (las
+ * alineaciones cargadas), y cuántos jugadores distintos pasaron. */
+export function plantelEquipo(data, ids) {
+  const porPartido = new Map();
+  const distintos = new Set();
+  for (const a of data.alineaciones) {
+    if (!ids.has(a.id_partido)) continue;
+    porPartido.set(a.id_partido, (porPartido.get(a.id_partido) ?? 0) + 1);
+    distintos.add(a.id_jugador);
+  }
+  const cantidades = [...porPartido.values()];
+  if (cantidades.length === 0) return null;
+  return {
+    promedio: cantidades.reduce((a, n) => a + n, 0) / cantidades.length,
+    min: Math.min(...cantidades), max: Math.max(...cantidades), distintos: distintos.size,
+  };
+}
+
+const PELOTA_PARADA = new Set(["Corner", "Tiro libre", "Penal", "Lateral"]);
+const SIN_DATO = new Set(["Sin dato", "Jugada abierta (s/d)"]);
+
+/** % de goles de pelota parada (córner, tiro libre, penal, lateral) sobre los
+ * goles con fuente cargada, a favor y en contra. `conDato` dice cuántos goles
+ * entraron en la cuenta: con pocos, el porcentaje es orientativo. */
+export function golesPelotaParada(data, ids) {
+  const cuenta = (tipo) => {
+    const goles = data.goles.filter((g) => ids.has(g.id_partido) && g.tipo_gol === tipo && !SIN_DATO.has(g.fuente));
+    const parada = goles.filter((g) => PELOTA_PARADA.has(g.fuente)).length;
+    return { parada, conDato: goles.length, pct: goles.length ? parada / goles.length : null };
+  };
+  return { gf: cuenta("GF"), gc: cuenta("GC") };
+}
+
+/** Los partidos que marcan récords del equipo: mayor goleada a favor, peor
+ * derrota y el partido con más goles (suma de ambos). Cada uno es el partido
+ * entero o null si no hay (p. ej. nunca perdimos). */
+export function extremosEquipo(data, ids) {
+  const partidos = delSet(data, ids);
+  const mejor = (lista, clave) => lista.reduce((m, p) => (m === null || clave(p) > clave(m) ? p : m), null);
+  return {
+    mayorGoleada: mejor(partidos.filter((p) => p.gf > p.gc), (p) => p.gf - p.gc),
+    peorDerrota: mejor(partidos.filter((p) => p.gc > p.gf), (p) => p.gc - p.gf),
+    masGoles: mejor(partidos, (p) => p.gf + p.gc),
+  };
 }
 
 /** Dúos asistidor->goleador (vista 6): ranking de pares por cantidad de goles GF. */
