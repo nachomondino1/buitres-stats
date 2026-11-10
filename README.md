@@ -57,7 +57,7 @@ página de posiciones de North Champ:
 ```
 
 Si queda un partido por jugar, la foto también trae el próximo rival y sus resultados
-(para el panel "Próximo partido" del Resumen). El workflow "Sync data" corre este script
+(para el panel "Próximo partido" de la vista Partidos). El workflow "Sync data" corre este script
 solo antes de exportar, así que cada vez que se dispara (push a `main` o "Run workflow")
 el sitio sale con la tabla y el próximo rival al día; si la API falla, usa las fotos
 commiteadas. Para guardar el historial de un torneo, commitear los `torneos/*.json`

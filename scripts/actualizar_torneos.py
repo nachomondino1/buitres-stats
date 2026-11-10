@@ -10,7 +10,7 @@ con un error claro y las fotos ya guardadas siguen sirviendo.
 
 Si a nuestro equipo le quedan partidos por jugar en el torneo, la foto también
 guarda el próximo (`proximo`: fecha, hora, cancha) y los resultados del rival en
-ese torneo, para el panel "Próximo partido" del Resumen. El análisis en sí se
+ese torneo, para el panel "Próximo partido" de la vista Partidos. El análisis en sí se
 calcula en el sitio (site/js/stats.js, analisisRival), no acá.
 
 Uso:
