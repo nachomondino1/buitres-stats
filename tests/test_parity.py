@@ -25,10 +25,10 @@ DATA = {
         {"id_jugador": "J03", "nombre": "Carla", "apellido": None, "apodo": None, "origen": None, "nombre_mostrar": "Carla"},
     ],
     "partidos": [
-        {"id_partido": 1, "fecha": "2026-01-10", "hora": None, "tipo": "Amistoso", "rival": "Rival A", "gf_1t": 1, "gc_1t": 1, "gf_2t": 1, "gc_2t": 0, "gf": 2, "gc": 1, "resultado": "G", "link_video": None, "goles_completos": True},
-        {"id_partido": 2, "fecha": "2026-01-17", "hora": None, "tipo": "Torneo", "rival": "Rival B", "gf_1t": 0, "gc_1t": 0, "gf_2t": 0, "gc_2t": 0, "gf": 0, "gc": 0, "resultado": "E", "link_video": None, "goles_completos": True},
-        {"id_partido": 3, "fecha": "2026-01-24", "hora": None, "tipo": "Torneo", "rival": "Rival A", "gf_1t": 1, "gc_1t": 1, "gf_2t": 0, "gc_2t": 1, "gf": 1, "gc": 2, "resultado": "P", "link_video": None, "goles_completos": True},
-        {"id_partido": 4, "fecha": "2026-01-31", "hora": None, "tipo": "Amistoso", "rival": "Rival C", "gf_1t": 2, "gc_1t": 0, "gf_2t": 1, "gc_2t": 0, "gf": 3, "gc": 0, "resultado": "G", "link_video": None, "goles_completos": True},
+        {"id_partido": 1, "fecha": "2026-01-10", "hora": None, "tipo": "Amistoso", "competencia": None, "rival": "Rival A", "gf_1t": 1, "gc_1t": 1, "gf_2t": 1, "gc_2t": 0, "gf": 2, "gc": 1, "resultado": "G", "link_video": None, "goles_completos": True},
+        {"id_partido": 2, "fecha": "2026-01-17", "hora": None, "tipo": "Torneo", "competencia": "Apertura 2026", "rival": "Rival B", "gf_1t": 0, "gc_1t": 0, "gf_2t": 0, "gc_2t": 0, "gf": 0, "gc": 0, "resultado": "E", "link_video": None, "goles_completos": True},
+        {"id_partido": 3, "fecha": "2026-01-24", "hora": None, "tipo": "Torneo", "competencia": "Clausura 2026", "rival": "Rival A", "gf_1t": 1, "gc_1t": 1, "gf_2t": 0, "gc_2t": 1, "gf": 1, "gc": 2, "resultado": "P", "link_video": None, "goles_completos": True},
+        {"id_partido": 4, "fecha": "2026-01-31", "hora": None, "tipo": "Amistoso", "competencia": None, "rival": "Rival C", "gf_1t": 2, "gc_1t": 0, "gf_2t": 1, "gc_2t": 0, "gf": 3, "gc": 0, "resultado": "G", "link_video": None, "goles_completos": True},
     ],
     "alineaciones": [
         {"id_partido": 1, "id_jugador": "J01", "amarillas": 0, "rojas": 0},
@@ -60,6 +60,10 @@ GRID = [
     {"ultimos": 10},
     {"tipo": "Torneo", "ultimos": 3},
     {"tipo": "Amistoso", "ultimos": 1},
+    {"competencia": "Apertura 2026"},
+    {"competencia": "Clausura 2026"},
+    {"competencia": "Clausura 2026", "ultimos": 1},
+    {"tipo": "Torneo", "competencia": "Apertura 2026"},
     {"desde": "2026-01-17", "hasta": "2026-01-24"},
     {"rivales": ["Rival A"]},
     {"rivales": ["Rival A"], "ultimos": 1},
@@ -84,6 +88,7 @@ def test_paridad_js_python(filtros):
     ids_py = stats_ref.filtrar_partidos(
         DATA,
         tipo=filtros.get("tipo"),
+        competencia=filtros.get("competencia"),
         desde=filtros.get("desde"),
         hasta=filtros.get("hasta"),
         rivales=filtros.get("rivales"),

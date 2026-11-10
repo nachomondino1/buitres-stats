@@ -832,6 +832,40 @@ main {
   flex-direction: column;
 }
 
+/* grupos dentro de un panel (Rachas, Datos curiosos): título con un puntito
+   de color (verde = bueno, rojo = no tan bueno, gris = neutro) y sus filas. */
+.grupo + .grupo {
+  margin-top: 1rem;
+}
+
+.grupo__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-texto-tenue);
+}
+
+.grupo__titulo::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-texto-suave);
+}
+
+.grupo__titulo--bueno::before {
+  background: var(--color-ganado);
+}
+
+.grupo__titulo--malo::before {
+  background: var(--color-perdido);
+}
+
 .filas--pie {
   margin-top: 0.5rem;
   border-top: 1px solid var(--color-borde-suave);
@@ -1095,6 +1129,27 @@ thead th:first-child {
 
 tbody tr:hover td {
   background: var(--color-bg-sutil);
+}
+
+/* "Ver todos" / "Ver menos" debajo de una tabla recortada */
+.ver-mas {
+  display: block;
+  margin: 0.75rem auto 0;
+  padding: 0.4rem 1.1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-bg-elevado);
+  color: var(--color-acento);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ver-mas:hover {
+  border-color: var(--color-acento);
+  background: var(--color-acento-suave);
 }
 
 /* scrollbar fina (solo WebKit) en contenedores con scroll propio */

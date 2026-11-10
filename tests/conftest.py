@@ -88,6 +88,9 @@ def build_workbook(path, *, jugadores=None, partidos=None, alineaciones=None, go
         cols = list(COLUMNAS[hoja])
         if quitar_columna and quitar_columna[0] == hoja:
             cols.remove(quitar_columna[1])
+        # columna opcional: solo está en la hoja si algún partido la trae
+        if hoja == "partidos" and any("competencia" in f for f in filas):
+            cols.append("competencia")
         _escribir_hoja(wb, hoja, cols, filas)
 
     if "listas" != quitar_hoja:

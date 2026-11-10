@@ -51,6 +51,7 @@ Partir de `Buitres_v2.xlsx` (provisto por la usuaria, hay que agregarlo a `data/
 | | `fecha` | date (no puede haber dos partidos el mismo día: fallaba el esquema viejo) |
 | | `hora` | time \| null |
 | | `tipo` | enum de `listas` (Torneo, Amistoso) |
+| | `competencia` | texto libre \| null, **columna opcional** ("Apertura 2026", "Clausura 2026"; vacía en amistosos). Si falta en la hoja el export la agrega vacía |
 | | `rival` | texto |
 | | `gf_1t`, `gc_1t`, `gf_2t`, `gc_2t` | int ≥ 0 |
 | | `link_video` | URL \| null (ver regla de links) |
@@ -136,6 +137,7 @@ site/
 | Filtro | Comportamiento |
 |---|---|
 | Tipo | Todos / Torneo / Amistoso |
+| Competencia | Todas o una (lista desplegable; solo aparece si algún partido tiene `competencia`) |
 | Rango de fechas | desde / hasta |
 | Rival | multi-selección |
 | Resultado | G / E / P (multi) |

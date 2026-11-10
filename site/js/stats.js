@@ -18,6 +18,7 @@ function dividirONull(numerador, denominador) {
 /**
  * filtros = {
  *   tipo: string | undefined,            // "Todos" o undefined = sin filtrar
+ *   competencia: string | undefined,     // "Apertura 2026", etc.; undefined = sin filtrar
  *   desde: "YYYY-MM-DD" | undefined,
  *   hasta: "YYYY-MM-DD" | undefined,
  *   rivales: Set<string> | undefined,    // vacío/undefined = todos
@@ -25,16 +26,17 @@ function dividirONull(numerador, denominador) {
  *   ultimos: number | undefined,         // undefined/null = "Todos"
  * }
  *
- * Semántica fijada en la spec: tipo + fechas + rival + resultado se aplican
+ * Semántica fijada en la spec: tipo + competencia + fechas + rival + resultado se aplican
  * juntos; "últimos N" se aplica DESPUÉS, sobre ese subconjunto ordenado por
  * fecha desc. Por eso ultimos no es "un filtro más" en el mismo paso.
  */
 export function filtrarPartidos(data, filtros = {}) {
-  const { tipo, desde, hasta, rivales, resultados, ultimos } = filtros;
+  const { tipo, competencia, desde, hasta, rivales, resultados, ultimos } = filtros;
 
   // partidos.filter(fn) ≈ [p for p in partidos if fn(p)]
   let partidos = data.partidos.filter((p) => {
     if (tipo && tipo !== "Todos" && p.tipo !== tipo) return false;
+    if (competencia && p.competencia !== competencia) return false;
     if (desde && p.fecha < desde) return false;
     if (hasta && p.fecha > hasta) return false;
     if (rivales && rivales.size > 0 && !rivales.has(p.rival)) return false;

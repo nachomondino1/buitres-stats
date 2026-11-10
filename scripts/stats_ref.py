@@ -11,10 +11,12 @@ import pandas as pd
 MINUTOS_PARTIDO = 70
 
 
-def filtrar_partidos(data, tipo=None, desde=None, hasta=None, rivales=None, resultados=None, ultimos=None):
+def filtrar_partidos(data, tipo=None, competencia=None, desde=None, hasta=None, rivales=None, resultados=None, ultimos=None):
     partidos = pd.DataFrame(data["partidos"])
     if tipo and tipo != "Todos":
         partidos = partidos[partidos["tipo"] == tipo]
+    if competencia:
+        partidos = partidos[partidos["competencia"] == competencia]
     if desde:
         partidos = partidos[partidos["fecha"] >= desde]
     if hasta:

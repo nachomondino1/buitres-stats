@@ -41,7 +41,7 @@ python3 -m http.server 8008 --directory site
 
 Y abrir `http://localhost:8008`. No sirve abrir `site/index.html` directo con doble clic
 (`file://`): `fetch("data/data.json")` lo bloquea el navegador por CORS, hace falta un
-servidor. Los filtros quedan en la URL (`?tipo=Torneo&ultimos=5`), así que un link
+servidor. Los filtros quedan en la URL (`?tipo=Torneo&competencia=Apertura+2026&ultimos=5`), así que un link
 específico se puede compartir tal cual.
 
 ## Tests
