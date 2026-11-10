@@ -38,6 +38,36 @@ def test_competencia_se_exporta(workbook_path):
     assert data["meta"]["warnings"] == []
 
 
+def test_competencia_sin_anio_toma_el_anio_de_la_fecha(workbook_path):
+    partidos = [
+        dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura"),
+        dict(PARTIDOS_BASE[0], id_partido=2, fecha=dt.date(2027, 4, 11), tipo="Torneo", competencia="Apertura"),
+    ]
+    alineaciones = ALINEACIONES_BASE + [dict(a, id_partido=2) for a in ALINEACIONES_BASE]
+    data = exportar(workbook_path(partidos=partidos, alineaciones=alineaciones))
+    assert [p["competencia"] for p in data["partidos"]] == ["Apertura 2026", "Apertura 2027"]
+
+
+def test_competencia_con_anio_no_se_modifica(workbook_path):
+    partidos = [dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Clausura 2025")]
+    data = exportar(workbook_path(partidos=partidos))
+    assert data["partidos"][0]["competencia"] == "Clausura 2025"
+
+
+def test_encabezado_competencia_con_otra_capitalizacion(workbook_path, tmp_path):
+    import openpyxl
+    partidos = [dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura")]
+    path = workbook_path(partidos=partidos)
+    wb = openpyxl.load_workbook(path)
+    ws = wb["partidos"]
+    for celda in ws[1]:
+        if celda.value == "competencia":
+            celda.value = "Competencia"
+    wb.save(path)
+    data = exportar(path)
+    assert data["partidos"][0]["competencia"] == "Apertura 2026"
+
+
 def test_warning_torneo_sin_competencia_si_la_columna_ya_se_usa(workbook_path):
     partidos = [
         dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura 2026"),

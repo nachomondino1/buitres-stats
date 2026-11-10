@@ -8,8 +8,6 @@ diferencia real, no como "las dos coinciden en lo mismo".
 """
 import pandas as pd
 
-MINUTOS_PARTIDO = 70
-
 
 def filtrar_partidos(data, tipo=None, competencia=None, desde=None, hasta=None, rivales=None, resultados=None, ultimos=None):
     partidos = pd.DataFrame(data["partidos"])
@@ -92,11 +90,12 @@ def tabla_jugadores(data, ids):
             "id_jugador": id_j,
             "nombre_mostrar": jugador["nombre_mostrar"],
             "pj": pj, "g": g, "a": a, "ga": ga,
+            "mediaGoleadora": (g / pj) if pj else None,
             "ta": int(propias["amarillas"].sum()),
             "tr": int(propias["rojas"].sum()),
             "primerGolEquipo": primer_gol,
             "partidosConGa": len(partidos_con_ga),
             "pctGaEquipo": (ga / total_ga_equipo) if total_ga_equipo else None,
-            "minPorGa": (pj * MINUTOS_PARTIDO / ga) if ga else None,
+            "mediaInfluencia": (ga / pj) if pj else None,
         })
     return filas

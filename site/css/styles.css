@@ -1019,6 +1019,56 @@ main {
   font-weight: 700;
 }
 
+/* 4.º y 5.º: una sola fila chica y tenue debajo del podio */
+.podio__cerca {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.2rem -0.4rem 0;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--color-borde-suave);
+}
+
+.podio__cerca-item {
+  display: flex;
+  flex: 1 1 0;
+  align-items: baseline;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.podio__cerca-item:hover {
+  background: var(--color-bg-sutil);
+  color: var(--color-texto);
+}
+
+.podio__pos {
+  flex: none;
+  color: var(--color-texto-suave);
+}
+
+.podio__cerca-nombre {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podio__cerca-item .podio__valor {
+  flex: none;
+  color: var(--color-texto);
+}
+
 .podio__vacio {
   padding: 0.35rem 0.4rem;
   color: var(--color-texto-suave);

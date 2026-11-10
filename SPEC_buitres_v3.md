@@ -51,7 +51,7 @@ Partir de `Buitres_v2.xlsx` (provisto por la usuaria, hay que agregarlo a `data/
 | | `fecha` | date (no puede haber dos partidos el mismo día: fallaba el esquema viejo) |
 | | `hora` | time \| null |
 | | `tipo` | enum de `listas` (Torneo, Amistoso) |
-| | `competencia` | texto libre \| null, **columna opcional** ("Apertura 2026", "Clausura 2026"; vacía en amistosos). Si falta en la hoja el export la agrega vacía |
+| | `competencia` | texto libre \| null, **columna opcional** ("Apertura", "Clausura"; vacía en amistosos). El encabezado puede tener otra capitalización y el export agrega el año de la fecha ("Apertura 2026"). Si falta en la hoja el export la agrega vacía |
 | | `rival` | texto |
 | | `gf_1t`, `gc_1t`, `gf_2t`, `gc_2t` | int ≥ 0 |
 | | `link_video` | URL \| null (ver regla de links) |
@@ -149,7 +149,7 @@ site/
 ### Vistas
 
 1. **Resumen del equipo:** PJ, G, E, P, GF, GC, Dif, % victorias, racha actual; bloque por tipo de partido (ignora el filtro de tipo).
-2. **Tabla de jugadores** (ordenable por columna, sticky header + primera columna en mobile): PJ, G, A, G+A, TA, TR, G/PJ, (G+A)/PJ, % de goles del equipo, veces que hizo el 1º gol del equipo. Opcional: "G cada x min" con `MINUTOS_PARTIDO = 70` como constante configurable (así calculaba el Excel viejo).
+2. **Tabla de jugadores** (ordenable por columna, sticky header + primera columna en mobile): PJ, G, A, G+A, TA, TR, G/PJ, (G+A)/PJ, % de goles del equipo, veces que hizo el 1º gol del equipo. Luego se agregaron "Media gol." (G / PJ) y "Media influencias" ((G+A) / PJ); el opcional "G cada x min" con `MINUTOS_PARTIDO` se descartó (ver DECISIONS.md).
 3. **Partidos:** lista con fecha, rival, tipo, marcador, resultado, link a video; al expandir, alineación y goles. Partidos con `goles_completos: false` llevan un aviso visible.
 4. **Ficha de jugador:** al clickear un jugador, los partidos en los que hizo gol y/o asistencia.
 5. **Gráficos:** evolución GF/GC por partido; ranking de goleadores y de G+A; fuente de los goles GF vs GC (con "Sin dato" visible); goles por tiempo (1T vs 2T).
