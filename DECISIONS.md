@@ -2,6 +2,38 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## 4.º y 5.º puesto en "Jugadores destacados" (pedido de la usuaria)
+
+Debajo de las 3 medallas de cada podio, una sola fila chica y tenue con el 4.º y
+el 5.º lado a lado, "para ir viendo quiénes se están acercando" al podio
+(`topJugadoresPorCategoria(..., 5)`, `podio()` en `ui.js`). Como dos jugadores
+comparten el ancho de una columna, esa fila muestra "nombre + inicial del
+apellido" (`nombreCorto()`: "Sebastian O."); el nombre completo va en el
+`title` y el clic lleva a la ficha igual que en las medallas. Si hay menos de 4
+con valor > 0 la fila no se dibuja (un 0 no cuenta como puesto). `sw.js` a
+`buitres-v9`.
+
+## Media goleadora y media de influencias en la tabla de jugadores (pedido de la usuaria)
+
+**Media influencias** (`mediaInfluencia`, (G+A) / PJ, dos decimales) reemplaza a
+"Min/G+A": los minutos eran una estimación (`pj * 70`, sin minutaje real) y una
+media por partido se lee mejor. Va justo después de G+A (así como "Media gol."
+va después de G). Se borró `MINUTOS_PARTIDO` de `stats.js` y `stats_ref.py`,
+que quedó sin ningún uso. `sw.js` a `buitres-v8`.
+
+Columna "Media gol." primero:
+
+Columna nueva "Media gol." (`mediaGoleadora` en `tablaJugadores`, JS y espejo en
+`stats_ref.py`, así que entra en el test de paridad): goles / partidos jugados,
+con dos decimales (`fmtMediaPorPartido`, compartido con media influencias; con uno, 0,43 y 0,38 se ven los dos
+como "0,4", y redondeado a entero no dice nada). Los promedios del hero
+(Prom. GF/GC) siguen con uno. Va entre G y A. Un jugador que jugó pero no convirtió
+tiene 0, no `null` (`null` queda solo para "sin partidos", que en la tabla no
+ocurre). **Ojo al ordenar por esta columna:** con pocos partidos la media
+engaña (alguien con 1 gol en 1 partido tiene 1,0, igual que 10 en 10 y más que
+17 en 13); si molesta, la salida es exigir un mínimo de PJ para entrar al
+orden, no cambiar la fórmula. `sw.js` a `buitres-v7`.
+
 ## Filtro por competencia (Apertura 2026 / Clausura 2026)
 
 Pedido de la usuaria: poder filtrar por torneo, "similar a Últimos partidos".
@@ -11,6 +43,15 @@ Pedido de la usuaria: poder filtrar por torneo, "similar a Últimos partidos".
   schema (`schema.COLUMNAS_OPCIONALES`): si la hoja no la tiene el export la
   agrega vacía y el sitio no dibuja el filtro, así se puede mergear el código
   antes de cargar la columna en el Google Sheet sin romper el deploy.
+- **Cómo se carga en la hoja** (ajuste tras verla en el Sheet real): un
+  desplegable con solo "Apertura" / "Clausura", vacío en amistosos, y el
+  encabezado quedó como "Competencia" (con mayúscula). El export lo tolera
+  (`normalizar` reconoce el encabezado sin importar mayúsculas/espacios) y
+  **arma el año con la fecha del partido** (`competencia_con_anio` en
+  `recalcular`): "Apertura" + 11/04/2026 -> "Apertura 2026". Si el valor ya
+  trae un año, no se toca. Limitación: si un torneo cruzara fin de año, sus
+  partidos quedarían en dos competencias distintas (hoy Apertura es abr-ago y
+  Clausura sep-dic, todo dentro del mismo año).
 - **No es un enum de `listas`:** los torneos van a seguir apareciendo
   (Apertura 2027...), y obligar a cargar cada uno en `listas` sería fricción de
   carga sin ganancia. El sitio arma las opciones a partir de los datos y las

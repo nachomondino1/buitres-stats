@@ -71,9 +71,18 @@ PK_POR_HOJA = {
 def normalizar(tablas):
     tablas = {k: v.copy() for k, v in tablas.items()}
     for hoja, cols in schema.COLUMNAS_OPCIONALES.items():
+        df = tablas[hoja]
         for c in cols:
-            if c not in tablas[hoja].columns:
-                tablas[hoja][c] = pd.Series([None] * len(tablas[hoja]), dtype=object, index=tablas[hoja].index)
+            if c not in df.columns:
+                # se tolera otra capitalización o espacios en el encabezado
+                # ("Competencia"): quien carga la hoja a mano no tiene por qué
+                # acordarse del nombre exacto de una columna opcional.
+                equivalentes = [col for col in df.columns if isinstance(col, str) and col.strip().lower() == c]
+                if equivalentes:
+                    df = df.rename(columns={equivalentes[0]: c})
+                else:
+                    df[c] = pd.Series([None] * len(df), dtype=object, index=df.index)
+        tablas[hoja] = df
     for hoja, cols in COLUMNAS_TEXTO.items():
         df = tablas[hoja]
         for c in cols:
@@ -210,6 +219,17 @@ def load_tables(backend, source):
 
 # ---------- recálculo (nunca confiar en el valor cacheado del Excel) ----------
 
+def competencia_con_anio(competencia, fecha):
+    """'Apertura' + fecha 2026-04-11 -> 'Apertura 2026'. Si la competencia ya trae
+    un año ('Apertura 2026'), no es texto o el partido no tiene fecha válida, se
+    deja tal cual."""
+    if not isinstance(competencia, str) or re.search(r"\b\d{4}\b", competencia):
+        return competencia
+    if fecha is None or pd.isna(fecha):
+        return competencia
+    return f"{competencia} {int(fecha.year)}"
+
+
 def recalcular(tablas):
     tablas = {k: v.copy() for k, v in tablas.items()}
 
@@ -220,6 +240,11 @@ def recalcular(tablas):
     p["gc"] = p["gc_1t"] + p["gc_2t"]
     p["resultado"] = p.apply(
         lambda r: "G" if r["gf"] > r["gc"] else ("P" if r["gf"] < r["gc"] else "E"), axis=1
+    )
+    # la hoja puede cargar solo "Apertura"/"Clausura": el año sale de la fecha
+    p["competencia"] = pd.Series(
+        [competencia_con_anio(c, f) for c, f in zip(p["competencia"], p["fecha"])],
+        dtype=object, index=p.index,
     )
     tablas["partidos"] = p
 

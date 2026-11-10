@@ -24,12 +24,16 @@ import {
 import { dibujarEvolucion, dibujarRanking, dibujarFuenteGoles, dibujarGolesPorTiempo } from "./charts.js";
 
 // maximumFractionDigits: 0 a propósito en los dos (pedido de la usuaria: nada
-// de decimales en la UI, ni en "Min/G+A" ni en los porcentajes).
+// de decimales en la UI, ni en los porcentajes ni en los conteos).
 const fmtNum = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const fmtPct = new Intl.NumberFormat("es-AR", { style: "percent", maximumFractionDigits: 0 });
 // excepción a la regla de "nada de decimales": un promedio de goles por
 // partido redondeado a entero (p.ej. 2.6 -> "3") deja de decir nada.
 const fmtProm = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+// medias por partido de la tabla de jugadores (goles / PJ y (G+A) / PJ): dos
+// decimales, con uno se pierden diferencias entre jugadores (0,43 vs 0,38 se
+// verían los dos como "0,4").
+const fmtMedia = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // timeZone: "UTC" es obligatorio acá: si no, Intl formatea en el huso horario
 // local del navegador y una fecha parseada como medianoche UTC puede mostrar
 // el día anterior (p.ej. Argentina, UTC-3).
@@ -46,6 +50,9 @@ function fmtPorcentaje(valor) {
 }
 function fmtPromedio(valor) {
   return valor === null || valor === undefined ? "–" : fmtProm.format(valor);
+}
+function fmtMediaPorPartido(valor) {
+  return valor === null || valor === undefined ? "–" : fmtMedia.format(valor);
 }
 function fmtFechaISO(iso) {
   // Date(iso) en UTC para que no corra un día según el huso horario del navegador
@@ -735,23 +742,34 @@ const CATEGORIAS_DESTACADOS = [
 // mostrar solo a uno). Un valor en 0 no cuenta como "destacado".
 function renderJugadoresDestacados(ids) {
   const podios = CATEGORIAS_DESTACADOS.map(([clave, etiqueta, unidad]) => [
-    etiqueta, unidad, topJugadoresPorCategoria(estado.data, ids, clave, 3),
+    etiqueta, unidad, topJugadoresPorCategoria(estado.data, ids, clave, 5),
   ]);
   const racha = jugadorEnRacha(estado.data, ids);
   if (podios.every(([, , top]) => top.length === 0) && !racha) return "";
   return panel(
     "Jugadores destacados",
-    "Quién lidera cada estadística, con 2.º y 3.º puesto. Tocá un jugador para ver su ficha.",
+    "Quién lidera cada estadística: el podio y, abajo, quiénes vienen detrás (4.º y 5.º). Tocá un jugador para ver su ficha.",
     `<div class="podios">${podios.map(([etiqueta, unidad, top]) => podio(etiqueta, unidad, top)).join("")}</div>${filaJugadorEnRacha(racha)}`,
   );
 }
 
-// una columna por categoría, con el top 3 como lista (el 1.º resaltado por CSS).
+// "Sebastian Orlando" -> "Sebastian O.": la fila del 4.º/5.º comparte el ancho
+// de una columna entre dos jugadores, el nombre completo no entra. Si el
+// segundo término no es un apellido ("Tomas (fabrica)", 'Simon "Chama"
+// Ortelli') queda solo el primer nombre. El completo va en el title.
+function nombreCorto(nombre) {
+  const [primero, segundo] = nombre.split(" ");
+  return segundo && /^\p{L}/u.test(segundo) ? `${primero} ${segundo[0]}.` : primero;
+}
+
+// una columna por categoría: el podio (top 3, con medallas, el 1.º resaltado
+// por CSS) y, en una sola fila chica debajo, el 4.º y 5.º para ver quién se
+// está acercando a las medallas (pedido de la usuaria).
 function podio(etiqueta, unidad, top) {
   const medallas = ["🥇", "🥈", "🥉"];
   const filas = top.length === 0
     ? `<li class="podio__vacio">–</li>`
-    : top.map((j, i) => `
+    : top.slice(0, 3).map((j, i) => `
       <li>
         <button type="button" class="podio__fila" data-jugador-id="${j.idJugador}">
           <span class="podio__medalla" aria-hidden="true">${medallas[i] ?? "•"}</span>
@@ -759,7 +777,18 @@ function podio(etiqueta, unidad, top) {
           <span class="podio__valor">${j.valor}</span>
         </button>
       </li>`).join("");
-  return `<div class="podio"><h3 class="podio__titulo">${etiqueta} <small>${unidad}</small></h3><ol class="podio__lista">${filas}</ol></div>`;
+  const cerca = top.slice(3, 5).map((j, i) => `
+    <button type="button" class="podio__cerca-item" data-jugador-id="${j.idJugador}" title="${j.nombre}">
+      <span class="podio__pos">${i + 4}º</span>
+      <span class="podio__cerca-nombre">${nombreCorto(j.nombre)}</span>
+      <span class="podio__valor">${j.valor}</span>
+    </button>`).join("");
+  return `
+    <div class="podio">
+      <h3 class="podio__titulo">${etiqueta} <small>${unidad}</small></h3>
+      <ol class="podio__lista">${filas}</ol>
+      ${cerca ? `<div class="podio__cerca">${cerca}</div>` : ""}
+    </div>`;
 }
 
 // jugador con la racha goleadora ACTUAL más larga (ver jugadorEnRacha() en
@@ -905,14 +934,15 @@ const COLUMNAS_JUGADORES = [
   { clave: "nombre_mostrar", etiqueta: "Jugador", numerica: false },
   { clave: "pj", etiqueta: "PJ", glosario: "Partidos jugados" },
   { clave: "g", etiqueta: "G", glosario: "Goles convertidos" },
+  { clave: "mediaGoleadora", etiqueta: "Media gol.", formato: fmtMediaPorPartido, glosario: "Media goleadora: goles por partido jugado (G ÷ PJ)" },
   { clave: "a", etiqueta: "A", glosario: "Asistencias" },
   { clave: "ga", etiqueta: "G+A", glosario: "Goles más asistencias" },
+  { clave: "mediaInfluencia", etiqueta: "Media influencias", formato: fmtMediaPorPartido, glosario: "Media de influencias: goles más asistencias por partido jugado (G+A ÷ PJ)" },
   { clave: "partidosConGa", etiqueta: "PJ c/ G+A", glosario: "Partidos jugados en los que convirtió un gol o dio una asistencia" },
   { clave: "ta", etiqueta: "TA", glosario: "Tarjetas amarillas" },
   { clave: "tr", etiqueta: "TR", glosario: "Tarjetas rojas" },
   { clave: "primerGolEquipo", etiqueta: "1º gol equipo", glosario: "Veces que convirtió el primer gol del equipo en el partido" },
   { clave: "pctGaEquipo", etiqueta: "% G+A equipo", formato: fmtPorcentaje, glosario: "Porcentaje de los goles + asistencias del equipo que son suyos" },
-  { clave: "minPorGa", etiqueta: "Min/G+A", formato: fmt, glosario: "Minutos jugados (estimados) por cada gol o asistencia" },
 ];
 
 const COLUMNAS_RIVALES = [
@@ -1215,11 +1245,11 @@ function renderTablaJugadoresContenido(cont, ids) {
           ${visibles.map((f) => `
             <tr>
               <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${avatarHTML(f.nombre_mostrar)}${f.nombre_mostrar}</button></td>
-              <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
+              <td>${f.pj}</td><td>${f.g}</td><td>${fmtMediaPorPartido(f.mediaGoleadora)}</td><td>${f.a}</td><td>${f.ga}</td><td>${fmtMediaPorPartido(f.mediaInfluencia)}</td>
               <td>${f.partidosConGa}</td>
               <td>${f.ta}</td><td>${f.tr}</td>
               <td>${f.primerGolEquipo}</td>
-              <td>${fmtPorcentaje(f.pctGaEquipo)}</td><td>${fmt(f.minPorGa)}</td>
+              <td>${fmtPorcentaje(f.pctGaEquipo)}</td>
             </tr>
           `).join("")}
         </tbody>

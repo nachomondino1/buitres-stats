@@ -4,10 +4,6 @@
 // paridad — por eso toda fórmula matemática tiene que coincidir exacto con §5
 // de SPEC_buitres_v3.md.
 
-// Constante configurable: así calculaba "minutos por gol" el Excel viejo
-// (pj * MINUTOS_PARTIDO ≈ minutos jugados, sin datos reales de minutaje).
-export const MINUTOS_PARTIDO = 70;
-
 // division ≈ Python, pero acá "a / 0" da Infinity en vez de ZeroDivisionError;
 // por eso cada división del módulo pasa por este helper (0 o null en el
 // denominador -> null, nunca NaN/Infinity) en vez de hacer a/b directo.
@@ -245,12 +241,13 @@ export function tablaJugadores(data, idsPartidos, textoBusqueda = "") {
       g: a.g,
       a: a.asis,
       ga,
+      mediaGoleadora: dividirONull(a.g, a.pj), // goles por partido jugado
       ta: a.ta,
       tr: a.tr,
       primerGolEquipo: a.primerGol,
       partidosConGa: a.partidosConGa.size,
       pctGaEquipo: dividirONull(ga, totalGaEquipo),
-      minPorGa: dividirONull(a.pj * MINUTOS_PARTIDO, ga),
+      mediaInfluencia: dividirONull(ga, a.pj), // (goles + asistencias) por partido jugado
     });
   }
   return filas;
@@ -531,8 +528,8 @@ function filaJugadorOCero(data, idsPartidos, idJugador) {
   return {
     id_jugador: idJugador,
     nombre_mostrar: jugador?.nombre_mostrar ?? idJugador,
-    pj: 0, g: 0, a: 0, ga: 0, ta: 0, tr: 0,
-    primerGolEquipo: 0, partidosConGa: 0, pctGaEquipo: null, minPorGa: null,
+    pj: 0, g: 0, a: 0, ga: 0, mediaGoleadora: null, ta: 0, tr: 0,
+    primerGolEquipo: 0, partidosConGa: 0, pctGaEquipo: null, mediaInfluencia: null,
   };
 }
 
