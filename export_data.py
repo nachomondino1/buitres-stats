@@ -55,7 +55,7 @@ def limpiar_marcador(x):
 
 COLUMNAS_TEXTO = {
     "jugadores": ["nombre", "apellido", "apodo", "origen"],
-    "partidos": ["tipo", "rival", "link_video", "lavo_camisetas", "observaciones"],
+    "partidos": ["tipo", "competencia", "rival", "link_video", "lavo_camisetas", "observaciones"],
     "alineaciones": ["jugador"],
     "goles": ["tipo_gol", "goleador", "asistidor", "fuente", "link"],
 }
@@ -70,6 +70,10 @@ PK_POR_HOJA = {
 
 def normalizar(tablas):
     tablas = {k: v.copy() for k, v in tablas.items()}
+    for hoja, cols in schema.COLUMNAS_OPCIONALES.items():
+        for c in cols:
+            if c not in tablas[hoja].columns:
+                tablas[hoja][c] = pd.Series([None] * len(tablas[hoja]), dtype=object, index=tablas[hoja].index)
     for hoja, cols in COLUMNAS_TEXTO.items():
         df = tablas[hoja]
         for c in cols:
@@ -335,6 +339,12 @@ def validar(tablas):
     fuera = p.loc[~p["tipo"].isin(tipos_validos), ["id_partido", "tipo"]].values.tolist()
     if fuera:
         errores.append(f"partidos.tipo fuera de listas: {fuera}")
+    # competencia es opcional, pero si ya se usa, un Torneo sin competencia
+    # desaparece del filtro en el sitio sin avisar: mejor marcarlo.
+    if "competencia" in p.columns and p["competencia"].notna().any():
+        sin_competencia = p.loc[(p["tipo"] == "Torneo") & p["competencia"].isna(), "id_partido"].tolist()
+        if sin_competencia:
+            warnings.append(f"partidos de tipo Torneo sin competencia (no aparecen al filtrar por competencia): {sin_competencia}")
     fuera = g.loc[~g["tipo_gol"].isin(schema.TIPOS_GOL), ["id_partido", "tipo_gol"]].values.tolist()
     if fuera:
         errores.append(f"goles.tipo_gol fuera de {schema.TIPOS_GOL}: {fuera}")
@@ -456,6 +466,7 @@ def construir_json(tablas, warnings, source):
             "fecha": formatear_fecha(r["fecha"]),
             "hora": formatear_hora(r["hora"]),
             "tipo": r["tipo"],
+            "competencia": r["competencia"],
             "rival": r["rival"],
             "gf_1t": jnum(r["gf_1t"]), "gc_1t": jnum(r["gc_1t"]),
             "gf_2t": jnum(r["gf_2t"]), "gc_2t": jnum(r["gc_2t"]),

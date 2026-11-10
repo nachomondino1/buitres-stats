@@ -2,6 +2,45 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Filtro por competencia (Apertura 2026 / Clausura 2026)
+
+Pedido de la usuaria: poder filtrar por torneo, "similar a Últimos partidos".
+
+- **Dato:** columna nueva `competencia` en la hoja `partidos`, texto libre
+  ("Apertura 2026", "Clausura 2026"), vacía en amistosos. Es **opcional** en el
+  schema (`schema.COLUMNAS_OPCIONALES`): si la hoja no la tiene el export la
+  agrega vacía y el sitio no dibuja el filtro, así se puede mergear el código
+  antes de cargar la columna en el Google Sheet sin romper el deploy.
+- **No es un enum de `listas`:** los torneos van a seguir apareciendo
+  (Apertura 2027...), y obligar a cargar cada uno en `listas` sería fricción de
+  carga sin ganancia. El sitio arma las opciones a partir de los datos y las
+  ordena por fecha del primer partido (Apertura antes que Clausura) sin
+  hardcodear nombres.
+- **Validación:** si algún partido ya usa la columna, un partido de tipo
+  `Torneo` sin competencia genera un WARNING (si no, desaparece del filtro en
+  silencio). Los amistosos sin competencia no avisan.
+- **Filtro:** `filtrarPartidos` (JS) y `filtrar_partidos` (`stats_ref.py`)
+  aceptan `competencia`; se aplica junto con tipo/fechas/rival/resultado, antes
+  de "últimos N". En la URL: `?competencia=Apertura+2026`. UI: `<select>`
+  "Competencia" (Todas + una por competencia), igual que "Tipo" (primero se
+  hizo como botones al estilo "Últimos partidos", pero la usuaria lo prefirió
+  como lista desplegable); suma al contador del botón "Filtros" en mobile.
+- **Rachas y Datos curiosos agrupados** (pedido de la usuaria: separar bien lo
+  bueno de lo no tan bueno): cada panel se divide en bloques con título y un
+  puntito de color (`grupoFilas()` en `ui.js`). Rachas: "Ahora" (la racha
+  actual, neutra), "Lo bueno" (ganadora más larga, más seguidos sin perder) y
+  "Lo no tan bueno" (perdedora más larga, más seguidos sin ganar). Datos
+  curiosos: "Lo bueno" (amuleto, más goles en un partido, vallas invictas,
+  goleada), "Lo no tan bueno" (peor derrota) y "Curiosidades" (rival más
+  enfrentado, marcador repetido). Un grupo sin filas no se dibuja.
+- **Tabla de jugadores recortada** (pedido de la usuaria): muestra los primeros
+  10 según el orden activo (`JUGADORES_VISIBLES` en `ui.js`) con un botón "Ver
+  todos (N)" / "Ver menos" debajo. Se recorta después de ordenar, así que
+  "primeros" sigue al orden elegido. Si hay 10 o menos jugadores no aparece el
+  botón. El estado expandido vive en memoria (no en la URL) y sobrevive a
+  ordenar y a cambiar filtros; al plegar vuelve al inicio del panel.
+- `sw.js` a `buitres-v6`.
+
 ## Rediseño con el playbook unificado + sistema de "paneles" (pedido de la usuaria)
 
 Se aplicó `DESIGN_PLAYBOOK_unificado.md` (tokens con `--color-bg-sutil`,

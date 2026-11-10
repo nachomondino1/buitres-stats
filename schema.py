@@ -32,6 +32,12 @@ COLUMNAS = {
     "listas": ["tipo_partido", "fuente_gol", "tipo_gol"],
 }
 
+# Columnas que pueden faltar en la hoja sin que sea un error: el export las agrega
+# vacías (None) y el sitio simplemente no ofrece el filtro correspondiente. Así se
+# puede mergear el código antes de agregar la columna al Google Sheet.
+# competencia: texto libre ("Apertura 2026", "Clausura 2026"), vacío en amistosos.
+COLUMNAS_OPCIONALES = {"partidos": ["competencia"]}
+
 # Enum de tipo_gol usado en goles.tipo_gol (no viene de 'listas', es fijo).
 TIPOS_GOL = ["GF", "GC"]
 

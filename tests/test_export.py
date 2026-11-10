@@ -26,6 +26,38 @@ def test_caso_limpio_no_tiene_errores_ni_warnings(workbook_path):
     assert data["meta"]["counts"] == {"partidos": 1, "alineaciones": 7, "goles": 1, "jugadores": 7}
 
 
+def test_competencia_ausente_en_la_hoja_exporta_none(workbook_path):
+    data = exportar(workbook_path())
+    assert data["partidos"][0]["competencia"] is None
+
+
+def test_competencia_se_exporta(workbook_path):
+    partidos = [dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura 2026")]
+    data = exportar(workbook_path(partidos=partidos))
+    assert data["partidos"][0]["competencia"] == "Apertura 2026"
+    assert data["meta"]["warnings"] == []
+
+
+def test_warning_torneo_sin_competencia_si_la_columna_ya_se_usa(workbook_path):
+    partidos = [
+        dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura 2026"),
+        dict(PARTIDOS_BASE[0], id_partido=2, fecha=dt.date(2026, 1, 17), tipo="Torneo", competencia=None),
+    ]
+    alineaciones = ALINEACIONES_BASE + [dict(a, id_partido=2) for a in ALINEACIONES_BASE]
+    data = exportar(workbook_path(partidos=partidos, alineaciones=alineaciones))
+    assert any("sin competencia" in w and "[2]" in w for w in data["meta"]["warnings"])
+
+
+def test_amistoso_sin_competencia_no_genera_warning(workbook_path):
+    partidos = [
+        dict(PARTIDOS_BASE[0], tipo="Torneo", competencia="Apertura 2026"),
+        dict(PARTIDOS_BASE[0], id_partido=2, fecha=dt.date(2026, 1, 17), tipo="Amistoso", competencia=None),
+    ]
+    alineaciones = ALINEACIONES_BASE + [dict(a, id_partido=2) for a in ALINEACIONES_BASE]
+    data = exportar(workbook_path(partidos=partidos, alineaciones=alineaciones))
+    assert not any("sin competencia" in w for w in data["meta"]["warnings"])
+
+
 # ---------------- ERROR ----------------
 
 def test_error_hoja_faltante(workbook_path):
@@ -239,7 +271,7 @@ def test_meta_schema(workbook_path):
         "id_jugador", "nombre", "apellido", "apodo", "origen", "nombre_mostrar",
     }
     assert set(data["partidos"][0].keys()) == {
-        "id_partido", "fecha", "hora", "tipo", "rival", "gf_1t", "gc_1t", "gf_2t", "gc_2t",
+        "id_partido", "fecha", "hora", "tipo", "competencia", "rival", "gf_1t", "gc_1t", "gf_2t", "gc_2t",
         "gf", "gc", "resultado", "link_video", "goles_completos",
     }
     assert set(data["alineaciones"][0].keys()) == {"id_partido", "id_jugador", "amarillas", "rojas"}

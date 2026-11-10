@@ -35,10 +35,10 @@ const DATA = {
     { id_jugador: "J03", nombre: "Carla", apellido: null, apodo: null, origen: null, nombre_mostrar: "Carla" },
   ],
   partidos: [
-    { id_partido: 1, fecha: "2026-01-10", hora: null, tipo: "Amistoso", rival: "Rival A", gf_1t: 1, gc_1t: 1, gf_2t: 1, gc_2t: 0, gf: 2, gc: 1, resultado: "G", link_video: null, goles_completos: true },
-    { id_partido: 2, fecha: "2026-01-17", hora: null, tipo: "Torneo", rival: "Rival B", gf_1t: 0, gc_1t: 0, gf_2t: 0, gc_2t: 0, gf: 0, gc: 0, resultado: "E", link_video: null, goles_completos: true },
-    { id_partido: 3, fecha: "2026-01-24", hora: null, tipo: "Torneo", rival: "Rival A", gf_1t: 1, gc_1t: 1, gf_2t: 0, gc_2t: 1, gf: 1, gc: 2, resultado: "P", link_video: null, goles_completos: true },
-    { id_partido: 4, fecha: "2026-01-31", hora: null, tipo: "Amistoso", rival: "Rival C", gf_1t: 2, gc_1t: 0, gf_2t: 1, gc_2t: 0, gf: 3, gc: 0, resultado: "G", link_video: null, goles_completos: true },
+    { id_partido: 1, fecha: "2026-01-10", hora: null, tipo: "Amistoso", competencia: null, rival: "Rival A", gf_1t: 1, gc_1t: 1, gf_2t: 1, gc_2t: 0, gf: 2, gc: 1, resultado: "G", link_video: null, goles_completos: true },
+    { id_partido: 2, fecha: "2026-01-17", hora: null, tipo: "Torneo", competencia: "Apertura 2026", rival: "Rival B", gf_1t: 0, gc_1t: 0, gf_2t: 0, gc_2t: 0, gf: 0, gc: 0, resultado: "E", link_video: null, goles_completos: true },
+    { id_partido: 3, fecha: "2026-01-24", hora: null, tipo: "Torneo", competencia: "Clausura 2026", rival: "Rival A", gf_1t: 1, gc_1t: 1, gf_2t: 0, gc_2t: 1, gf: 1, gc: 2, resultado: "P", link_video: null, goles_completos: true },
+    { id_partido: 4, fecha: "2026-01-31", hora: null, tipo: "Amistoso", competencia: null, rival: "Rival C", gf_1t: 2, gc_1t: 0, gf_2t: 1, gc_2t: 0, gf: 3, gc: 0, resultado: "G", link_video: null, goles_completos: true },
   ],
   alineaciones: [
     { id_partido: 1, id_jugador: "J01", amarillas: 0, rojas: 0 },
@@ -72,6 +72,21 @@ test("sin filtros devuelve todos los partidos", () => {
 test("filtro por tipo", () => {
   const ids = filtrarPartidos(DATA, { tipo: "Torneo" });
   assert.deepEqual(ids, new Set([2, 3]));
+});
+
+test("filtro por competencia", () => {
+  assert.deepEqual(filtrarPartidos(DATA, { competencia: "Apertura 2026" }), new Set([2]));
+  assert.deepEqual(filtrarPartidos(DATA, { competencia: "Clausura 2026" }), new Set([3]));
+});
+
+test("competencia combina con tipo y con últimos N", () => {
+  assert.deepEqual(filtrarPartidos(DATA, { tipo: "Torneo", competencia: "Clausura 2026" }), new Set([3]));
+  assert.deepEqual(filtrarPartidos(DATA, { tipo: "Amistoso", competencia: "Clausura 2026" }), new Set());
+  assert.deepEqual(filtrarPartidos(DATA, { competencia: "Apertura 2026", ultimos: 1 }), new Set([2]));
+});
+
+test("competencia indefinida no filtra", () => {
+  assert.deepEqual(filtrarPartidos(DATA, { competencia: undefined }), TODOS);
 });
 
 test("tipo 'Todos' no filtra", () => {

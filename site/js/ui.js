@@ -77,6 +77,10 @@ const estado = {
     rivales: { columna: "pj", direccion: "desc" },
   },
   jugadorFichaId: null,
+  // tabla de jugadores: arranca mostrando solo los primeros JUGADORES_VISIBLES
+  // (según el orden activo); "Ver todos" la expande. A propósito NO vive en
+  // la URL: es una preferencia de visualización, como el comparador.
+  tablaJugadoresCompleta: false,
   // selección del comparador de 2 jugadores: a propósito NO vive en la URL
   // (a diferencia de filtros/orden/ficha) — impacto/esfuerzo no lo amerita
   // para una comparación que se arma y se tira, ver DECISIONS.md.
@@ -88,6 +92,8 @@ const estado = {
 // jugador, así que no encajaba del todo en ninguna de las otras dos (pedido
 // de la usuaria).
 const VISTAS = ["resumen", "partidos", "equipo", "jugadores"];
+
+const JUGADORES_VISIBLES = 10;
 
 // vistas viejas (de antes de agrupar en pocas pestañas) que puede traer un
 // link guardado: las mandamos a la vista nueva que más se le parece, en vez
@@ -217,6 +223,7 @@ function leerFiltrosDeURL() {
   const params = new URLSearchParams(window.location.search);
   const filtros = {};
   if (params.has("tipo")) filtros.tipo = params.get("tipo");
+  if (params.has("competencia")) filtros.competencia = params.get("competencia");
   if (params.has("resultados")) filtros.resultados = new Set(params.get("resultados").split(","));
   if (params.has("ultimos")) filtros.ultimos = Number(params.get("ultimos"));
   estado.filtros = filtros;
@@ -238,6 +245,7 @@ function actualizarURL() {
   const params = new URLSearchParams();
   const f = estado.filtros;
   if (f.tipo && f.tipo !== "Todos") params.set("tipo", f.tipo);
+  if (f.competencia) params.set("competencia", f.competencia);
   if (f.resultados && f.resultados.size) params.set("resultados", [...f.resultados].join(","));
   if (f.ultimos != null) params.set("ultimos", String(f.ultimos));
   if (estado.vista !== "resumen") params.set("vista", estado.vista);
@@ -262,6 +270,7 @@ function construirControlesFiltro() {
   const cont = document.querySelector(".filtros");
   const { data, filtros } = estado;
   const tipos = [...new Set(data.partidos.map((p) => p.tipo))].sort();
+  const competencias = competenciasDisponibles(data);
 
   // en mobile todo el bloque vive colapsado atrás de este botón (sticky,
   // ocupa una sola línea); en desktop queda oculto por CSS y .filtros-panel
@@ -282,6 +291,14 @@ function construirControlesFiltro() {
           ${tipos.map((t) => `<option value="${t}">${t}</option>`).join("")}
         </select>
       </div>
+      ${competencias.length ? `
+      <div class="filtro-campo">
+        <label class="filtro-etiqueta" for="f-competencia">Competencia</label>
+        <select id="f-competencia">
+          <option value="">Todas</option>
+          ${competencias.map((c) => `<option value="${c}">${c}</option>`).join("")}
+        </select>
+      </div>` : ""}
       <div class="filtro-campo">
         <span class="filtro-etiqueta" id="f-resultado-label">Resultado</span>
         <details class="filtro-dropdown" name="filtro-dropdown">
@@ -316,6 +333,8 @@ function construirControlesFiltro() {
   }
   actualizarResumenResultados(cont);
   actualizarBotonesUltimos(cont);
+  const selectCompetencia = cont.querySelector("#f-competencia");
+  if (selectCompetencia) selectCompetencia.value = filtros.competencia ?? "";
   actualizarBadgeFiltros(cont);
   if (filtros.ultimos != null && ![3, 5, 10].includes(filtros.ultimos)) {
     cont.querySelector("#f-ultimos-custom").value = filtros.ultimos;
@@ -339,6 +358,11 @@ function construirControlesFiltro() {
       onFiltrosCambiaron();
     });
   }
+  cont.querySelector("#f-competencia")?.addEventListener("change", (e) => {
+    estado.filtros.competencia = e.target.value || undefined;
+    actualizarBadgeFiltros(cont);
+    onFiltrosCambiaron();
+  });
   for (const boton of cont.querySelectorAll("[data-ultimos]")) {
     boton.addEventListener("click", () => {
       estado.filtros.ultimos = boton.dataset.ultimos ? Number(boton.dataset.ultimos) : undefined;
@@ -401,6 +425,20 @@ function actualizarResumenResultados(cont) {
   cont.querySelector("#f-resultado-resumen").textContent = textoResumenSeleccion(estado.filtros.resultados);
 }
 
+// competencias que existen en los datos (columna opcional `competencia` de
+// partidos), de la más vieja a la más nueva según su primer partido: así
+// "Apertura" queda antes que "Clausura" sin hardcodear nombres. Vacía si la
+// hoja todavía no usa la columna, y entonces el filtro ni se dibuja.
+function competenciasDisponibles(data) {
+  const primerPartido = new Map();
+  for (const p of data.partidos) {
+    if (!p.competencia) continue;
+    const previa = primerPartido.get(p.competencia);
+    if (previa === undefined || p.fecha < previa) primerPartido.set(p.competencia, p.fecha);
+  }
+  return [...primerPartido.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([nombre]) => nombre);
+}
+
 // qué botón de "últimos partidos" queda verde (aria-pressed): hay que
 // llamarla también al clickear un botón o tipear en el input custom, no solo
 // al construir los controles, si no el resaltado queda pegado en "Todos".
@@ -419,6 +457,7 @@ function actualizarBadgeFiltros(cont) {
   if (!badge) return;
   let n = 0;
   if (estado.filtros.tipo) n++;
+  if (estado.filtros.competencia) n++;
   if (estado.filtros.resultados?.size) n++;
   if (estado.filtros.ultimos != null) n++;
   badge.hidden = n === 0;
@@ -564,6 +603,20 @@ function fila(etiqueta, detalle, valor, tono) {
   `;
 }
 
+// bloque con título ("Lo bueno", "Lo no tan bueno"...) y su lista de filas,
+// para separar de un vistazo lo positivo de lo negativo en un mismo panel.
+// tono: "bueno" | "malo" | "neutro" (solo cambia el puntito del título).
+// Nada si no hay filas.
+function grupoFilas(titulo, tono, filas) {
+  if (filas.length === 0) return "";
+  return `
+    <section class="grupo">
+      <h3 class="grupo__titulo grupo__titulo--${tono}">${titulo}</h3>
+      <div class="filas">${filas.join("")}</div>
+    </section>
+  `;
+}
+
 // igual que fila() pero el valor es un jugador (con avatar) y toda la fila es
 // clickeable -> va a su ficha.
 function filaJugador(etiqueta, detalle, jugador) {
@@ -638,11 +691,13 @@ function renderRachasHistoricas(ids, rachaActual) {
     ["Más partidos seguidos sin perder", r.sinPerder, "bueno"],
   ];
   if (!rachaActual && items.every(([, racha]) => !racha)) return "";
-  const filas = [filaRachaActual(rachaActual), ...items.map(([etiqueta, racha, tono]) => filaRacha(etiqueta, racha, tono))];
+  const deTono = (t) => items.filter(([, , tono]) => tono === t).map(([etiqueta, racha, tono]) => filaRacha(etiqueta, racha, tono));
   return panel(
     "Rachas",
     "La racha actual del equipo y las mejores y peores de la historia.",
-    `<div class="filas">${filas.join("")}</div>`,
+    grupoFilas("Ahora", "neutro", [filaRachaActual(rachaActual)]) +
+      grupoFilas("Lo bueno", "bueno", deTono("bueno")) +
+      grupoFilas("Lo no tan bueno", "malo", deTono("malo")),
   );
 }
 
@@ -722,20 +777,22 @@ function filaJugadorEnRacha(racha) {
 // que algunas tarjetas no aparezcan todavía.
 function renderDatosCuriosos(ids) {
   const d = datosCuriosos(estado.data, ids);
-  const tarjetas = [];
+  // cada hecho va a un grupo según si es una buena noticia, una mala o
+  // simplemente una coincidencia neutra.
+  const grupos = { bueno: [], malo: [], neutro: [] };
 
   if (d.rivalRepetido) {
     const r = d.rivalRepetido;
     const record = [r.g && `${r.g}G`, r.e && `${r.e}E`, r.p && `${r.p}P`].filter(Boolean).join("-");
-    tarjetas.push(filaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
+    grupos.neutro.push(filaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
   }
   if (d.marcadorRepetido) {
     const m = d.marcadorRepetido;
-    tarjetas.push(filaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
+    grupos.neutro.push(filaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
   }
   if (d.jugadorAmuleto) {
     const j = d.jugadorAmuleto;
-    tarjetas.push(filaCuriosidadJugador(
+    grupos.bueno.push(filaCuriosidadJugador(
       "Jugador amuleto",
       j,
       `${fmtPorcentaje(j.pctVictorias)} de victorias del equipo en sus ${j.pj} PJ`,
@@ -743,7 +800,7 @@ function renderDatosCuriosos(ids) {
   }
   if (d.masGolesUnPartido) {
     const m = d.masGolesUnPartido;
-    tarjetas.push(filaCuriosidadJugador(
+    grupos.bueno.push(filaCuriosidadJugador(
       "Más goles en un solo partido",
       m,
       `${m.cantidad} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`,
@@ -751,11 +808,11 @@ function renderDatosCuriosos(ids) {
   }
   if (d.vallaInvicta) {
     const v = d.vallaInvicta;
-    tarjetas.push(filaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
+    grupos.bueno.push(filaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
   }
   if (d.partidoMasDesparejo) {
     const p = d.partidoMasDesparejo;
-    tarjetas.push(filaCuriosidad(
+    grupos[p.aFavor ? "bueno" : "malo"].push(filaCuriosidad(
       p.aFavor ? "Goleada más contundente" : "Peor derrota",
       `${p.gf}-${p.gc}`,
       `${fmtFechaISO(p.fecha)} vs ${p.rival}`,
@@ -763,11 +820,13 @@ function renderDatosCuriosos(ids) {
     ));
   }
 
-  if (tarjetas.length === 0) return "";
+  if (grupos.bueno.length + grupos.malo.length + grupos.neutro.length === 0) return "";
   return panel(
     "Datos curiosos",
     "Coincidencias y récords que salen de cruzar los datos entre sí.",
-    `<div class="filas">${tarjetas.join("")}</div>`,
+    grupoFilas("Lo bueno", "bueno", grupos.bueno) +
+      grupoFilas("Lo no tan bueno", "malo", grupos.malo) +
+      grupoFilas("Curiosidades", "neutro", grupos.neutro),
   );
 }
 
@@ -1144,12 +1203,16 @@ function renderTablaJugadoresContenido(cont, ids) {
     return;
   }
 
+  const recortada = filas.length > JUGADORES_VISIBLES;
+  const completa = estado.tablaJugadoresCompleta;
+  const visibles = recortada && !completa ? filas.slice(0, JUGADORES_VISIBLES) : filas;
+
   cont.innerHTML = `
     <div class="tabla-wrap">
       <table>
         <thead><tr>${COLUMNAS_JUGADORES.map((c) => thOrdenable(c, orden)).join("")}</tr></thead>
         <tbody>
-          ${filas.map((f) => `
+          ${visibles.map((f) => `
             <tr>
               <td><button type="button" class="boton-jugador" data-jugador-id="${f.id_jugador}">${avatarHTML(f.nombre_mostrar)}${f.nombre_mostrar}</button></td>
               <td>${f.pj}</td><td>${f.g}</td><td>${f.a}</td><td>${f.ga}</td>
@@ -1162,8 +1225,17 @@ function renderTablaJugadoresContenido(cont, ids) {
         </tbody>
       </table>
     </div>
+    ${recortada ? `<button type="button" class="ver-mas" id="ver-mas-jugadores" aria-expanded="${completa}">${completa ? "Ver menos" : `Ver todos (${filas.length})`}</button>` : ""}
     ${renderLeyendaColumnas(COLUMNAS_JUGADORES)}
   `;
+
+  cont.querySelector("#ver-mas-jugadores")?.addEventListener("click", () => {
+    estado.tablaJugadoresCompleta = !estado.tablaJugadoresCompleta;
+    renderTablaJugadoresContenido(cont, ids);
+    // al plegar, la página se acorta: volver al principio del panel para no
+    // quedar perdido más abajo de donde estaba la tabla.
+    if (!estado.tablaJugadoresCompleta) cont.closest(".panel")?.scrollIntoView({ block: "start" });
+  });
 
   // re-renderiza solo esta sección (no toda la vista): así ordenar no reinicia
   // el resto de las secciones (gráficos, dúos, ficha ya abierta, scroll).
