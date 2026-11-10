@@ -47,6 +47,28 @@ específico se puede compartir tal cual.
 ## Torneos (tabla de posiciones de la liga)
 
 La vista Partidos muestra la tabla de cada torneo (Apertura 2026, Clausura 2026...).
+## Flujo semanal
+
+Después de cada partido:
+
+1. Cargar el partido (resultado, alineación y goles) en el Google Sheet.
+2. Correr "Sync data" (Actions → Sync data → Run workflow). Es una sola corrida que:
+   1. trae de la API de North Champ la tabla de cada torneo y el próximo partido del equipo
+      con los resultados del rival (`scripts/actualizar_torneos.py`);
+   2. exporta el Sheet a `site/data/data.json`;
+   3. publica el sitio.
+3. Listo: el sitio muestra el partido nuevo, la tabla al día y el panel "Próximo partido".
+   El análisis del rival no se guarda: se calcula en el navegador con esos datos.
+
+Para tener en cuenta:
+
+- Si la API de North Champ falla, el deploy sigue igual con las últimas fotos de `torneos/`
+  (pueden estar viejas). El error queda en el log del paso "Actualizar torneos".
+- Las fotos nuevas viven solo en el sitio publicado; el workflow no las commitea al repo.
+  Para guardar la tabla final de un torneo, correr el script en local y commitear `torneos/`.
+- Si la fecha del próximo partido ya pasó y todavía no se corrió el sync, el panel
+  "Próximo partido" se esconde solo (no muestra un rival viejo).
+
 Esas tablas son una "foto" guardada en `torneos/<id_torneo>.json` (versionada, así el
 historial queda aunque la liga lo saque de su sitio). Se generan con la API que usa la
 página de posiciones de North Champ:
