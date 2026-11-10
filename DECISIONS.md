@@ -48,10 +48,13 @@ cada torneo (`northchamp.com.ar/torneos_zona_posiciones.html?id_torneo=...`).
   Clausura 2026 ya figura como Zona C (Apertura fue Zona D).
 - `sw.js` a `buitres-v10`.
 
-### Próximo rival + análisis en Resumen (mismo pedido, segunda parte)
+### Próximo rival + análisis (mismo pedido, segunda parte)
 
-Panel "Próximo partido" arriba de todo en Resumen: rival, día/hora/cancha, su
-forma en puntitos y un análisis breve, con los resultados del rival en el torneo.
+Panel "Próximo partido": rival, día/hora/cancha, su forma en puntitos y un análisis
+breve, con los resultados del rival en el torneo. **Dónde:** primero se puso arriba de
+todo en Resumen, pero la usuaria se arrepintió (Resultados tiene que seguir siendo la
+primera sección de Resumen): ahora vive en la vista **Partidos**, arriba de todo, al
+lado del "Último partido" (los dos en una fila en desktop, apilados en mobile).
 
 - **Datos:** `scripts/actualizar_torneos.py` ahora también guarda `proximo` en la
   foto del torneo (el partido no jugado más cercano de nuestro equipo, vía

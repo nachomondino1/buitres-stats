@@ -568,7 +568,6 @@ function renderResumen(cont, ids) {
   const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
     <div class="paneles">
-      ${renderProximoPartido()}
       ${renderHeroResumen(r, forma)}
       ${renderJugadoresDestacados(ids)}
       <div class="resumen__par">
@@ -644,9 +643,9 @@ function filaJugador(etiqueta, detalle, jugador) {
   `;
 }
 
-// "Próximo partido": rival, cuándo y dónde, y un análisis breve armado con sus
-// resultados en el torneo (ver analisisRival() en stats.js). Independiente de
-// los filtros. Los datos vienen de torneos/*.json; si la foto es vieja y el
+// "Próximo partido" (vista Partidos, al lado del último): rival, cuándo y
+// dónde, y un análisis breve armado con sus resultados en el torneo (ver
+// analisisRival() en stats.js). Independiente de los filtros. Los datos vienen de torneos/*.json; si la foto es vieja y el
 // partido ya pasó, el panel no aparece (ver proximoPartido()).
 const fmtDiaLargo = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
@@ -1042,7 +1041,10 @@ function renderEquipo(cont, ids) {
 function renderPartidosVista(cont, ids) {
   cont.innerHTML = `
     <div class="paneles">
-      ${renderTarjetaUltimoPartido()}
+      <div class="resumen__par">
+        ${renderTarjetaUltimoPartido()}
+        ${renderProximoPartido()}
+      </div>
       ${renderTorneos()}
       ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
     </div>
