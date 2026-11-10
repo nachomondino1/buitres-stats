@@ -1,0 +1,131 @@
+{
+  "id_torneo": 3944,
+  "competencia": "Apertura 2026",
+  "nombre": "Apertura",
+  "categoria": "D",
+  "inicio": "2026-03-28",
+  "actualizado": "2026-11-10",
+  "proximo": null,
+  "tabla": [
+    {
+      "pos": 1,
+      "equipo": "MARCIANOS FC",
+      "pts": 24,
+      "pj": 9,
+      "pg": 8,
+      "pe": 0,
+      "pp": 1,
+      "gf": 48,
+      "gc": 10,
+      "dif": 38
+    },
+    {
+      "pos": 2,
+      "equipo": "LA RESACA FC",
+      "pts": 16,
+      "pj": 9,
+      "pg": 5,
+      "pe": 1,
+      "pp": 3,
+      "gf": 37,
+      "gc": 22,
+      "dif": 15
+    },
+    {
+      "pos": 3,
+      "equipo": "BATATA FC",
+      "pts": 16,
+      "pj": 9,
+      "pg": 5,
+      "pe": 1,
+      "pp": 3,
+      "gf": 28,
+      "gc": 20,
+      "dif": 8
+    },
+    {
+      "pos": 4,
+      "equipo": "LOS BUITRES",
+      "pts": 16,
+      "pj": 9,
+      "pg": 5,
+      "pe": 1,
+      "pp": 3,
+      "gf": 26,
+      "gc": 30,
+      "dif": -4
+    },
+    {
+      "pos": 5,
+      "equipo": "404 FC",
+      "pts": 15,
+      "pj": 9,
+      "pg": 5,
+      "pe": 0,
+      "pp": 4,
+      "gf": 28,
+      "gc": 26,
+      "dif": 2
+    },
+    {
+      "pos": 6,
+      "equipo": "LA MUCHACHADA FC",
+      "pts": 13,
+      "pj": 9,
+      "pg": 4,
+      "pe": 1,
+      "pp": 4,
+      "gf": 21,
+      "gc": 28,
+      "dif": -7
+    },
+    {
+      "pos": 7,
+      "equipo": "LA TRIBU",
+      "pts": 10,
+      "pj": 9,
+      "pg": 3,
+      "pe": 1,
+      "pp": 5,
+      "gf": 29,
+      "gc": 36,
+      "dif": -7
+    },
+    {
+      "pos": 8,
+      "equipo": "ITUZA",
+      "pts": 9,
+      "pj": 9,
+      "pg": 3,
+      "pe": 0,
+      "pp": 6,
+      "gf": 19,
+      "gc": 31,
+      "dif": -12
+    },
+    {
+      "pos": 9,
+      "equipo": "LA BANDA DE ZONA NORTE",
+      "pts": 7,
+      "pj": 9,
+      "pg": 2,
+      "pe": 1,
+      "pp": 6,
+      "gf": 13,
+      "gc": 21,
+      "dif": -8
+    },
+    {
+      "pos": 10,
+      "equipo": "RABONA FC",
+      "pts": 3,
+      "pj": 9,
+      "pg": 1,
+      "pe": 0,
+      "pp": 8,
+      "gf": 8,
+      "gc": 33,
+      "dif": -25
+    }
+  ]
+}

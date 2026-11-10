@@ -1,0 +1,188 @@
+{
+  "id_torneo": 3991,
+  "competencia": "Clausura 2026",
+  "nombre": "Clausura",
+  "categoria": "C",
+  "inicio": "2026-09-05",
+  "actualizado": "2026-11-10",
+  "proximo": {
+    "fecha": "2026-11-14",
+    "hora": "14:00",
+    "cancha": "06a",
+    "sede": "Paraisos",
+    "etapa": "fecha 11",
+    "rival": "BIRRINGHAM",
+    "partidos_rival": [
+      {
+        "fecha": "2026-09-12",
+        "contra": "CA PICAPICA",
+        "gf": 3,
+        "gc": 2
+      },
+      {
+        "fecha": "2026-09-19",
+        "contra": "LA T Y LA T FC",
+        "gf": 2,
+        "gc": 1
+      },
+      {
+        "fecha": "2026-09-26",
+        "contra": "PUÑETEROS",
+        "gf": 11,
+        "gc": 2
+      },
+      {
+        "fecha": "2026-10-24",
+        "contra": "CELTA FC",
+        "gf": 0,
+        "gc": 1
+      },
+      {
+        "fecha": "2026-10-31",
+        "contra": "PUCHITO F.C.",
+        "gf": 3,
+        "gc": 3
+      },
+      {
+        "fecha": "2026-11-07",
+        "contra": "PEREZ EL RATON",
+        "gf": 3,
+        "gc": 0
+      }
+    ]
+  },
+  "tabla": [
+    {
+      "pos": 1,
+      "equipo": "CELTA FC",
+      "pts": 16,
+      "pj": 7,
+      "pg": 5,
+      "pe": 1,
+      "pp": 1,
+      "gf": 19,
+      "gc": 9,
+      "dif": 10
+    },
+    {
+      "pos": 2,
+      "equipo": "CRUZ DEL SUR",
+      "pts": 16,
+      "pj": 8,
+      "pg": 5,
+      "pe": 1,
+      "pp": 2,
+      "gf": 24,
+      "gc": 15,
+      "dif": 9
+    },
+    {
+      "pos": 3,
+      "equipo": "NANI NANI",
+      "pts": 15,
+      "pj": 7,
+      "pg": 5,
+      "pe": 0,
+      "pp": 1,
+      "gf": 28,
+      "gc": 8,
+      "dif": 20
+    },
+    {
+      "pos": 4,
+      "equipo": "BIRRINGHAM",
+      "pts": 13,
+      "pj": 7,
+      "pg": 4,
+      "pe": 1,
+      "pp": 1,
+      "gf": 22,
+      "gc": 9,
+      "dif": 13
+    },
+    {
+      "pos": 5,
+      "equipo": "LA T Y LA T FC",
+      "pts": 12,
+      "pj": 7,
+      "pg": 4,
+      "pe": 0,
+      "pp": 3,
+      "gf": 19,
+      "gc": 14,
+      "dif": 5
+    },
+    {
+      "pos": 6,
+      "equipo": "ESPECTO FC",
+      "pts": 9,
+      "pj": 7,
+      "pg": 3,
+      "pe": 0,
+      "pp": 4,
+      "gf": 26,
+      "gc": 23,
+      "dif": 3
+    },
+    {
+      "pos": 7,
+      "equipo": "CA PICAPICA",
+      "pts": 9,
+      "pj": 7,
+      "pg": 3,
+      "pe": 0,
+      "pp": 4,
+      "gf": 21,
+      "gc": 22,
+      "dif": -1
+    },
+    {
+      "pos": 8,
+      "equipo": "LOS BUITRES",
+      "pts": 9,
+      "pj": 7,
+      "pg": 3,
+      "pe": 0,
+      "pp": 4,
+      "gf": 16,
+      "gc": 22,
+      "dif": -6
+    },
+    {
+      "pos": 9,
+      "equipo": "PUCHITO F.C.",
+      "pts": 7,
+      "pj": 7,
+      "pg": 2,
+      "pe": 1,
+      "pp": 4,
+      "gf": 15,
+      "gc": 28,
+      "dif": -13
+    },
+    {
+      "pos": 10,
+      "equipo": "PEREZ EL RATON",
+      "pts": 6,
+      "pj": 8,
+      "pg": 2,
+      "pe": 0,
+      "pp": 6,
+      "gf": 17,
+      "gc": 29,
+      "dif": -12
+    },
+    {
+      "pos": 11,
+      "equipo": "PUÑETEROS",
+      "pts": 3,
+      "pj": 8,
+      "pg": 1,
+      "pe": 0,
+      "pp": 7,
+      "gf": 13,
+      "gc": 41,
+      "dif": -28
+    }
+  ]
+}

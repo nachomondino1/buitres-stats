@@ -674,6 +674,87 @@ main {
   text-decoration: underline;
 }
 
+/* próximo partido (Resumen) */
+
+.proximo__rival {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.proximo__vs {
+  font-size: 0.8rem;
+  color: var(--color-texto-tenue);
+}
+
+.proximo__nombre {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.proximo__forma {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+.proximo__forma .forma-puntos {
+  margin-right: 0;
+}
+
+/* viñetas del análisis: el puntito es desde NUESTRO punto de vista (verde =
+   el rival es flojo en eso, rojo = es fuerte) */
+.analisis {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.analisis__item {
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--color-borde-suave);
+  font-size: 0.85rem;
+}
+
+.analisis__item:first-child {
+  border-top: none;
+}
+
+.analisis__item::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-texto-suave);
+}
+
+.analisis__item--bueno::before {
+  background: var(--color-ganado);
+}
+
+.analisis__item--malo::before {
+  background: var(--color-perdido);
+}
+
+.analisis__conclusion {
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.analisis__nota {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
 /* hero */
 
 .panel--hero .panel__cabecera {
@@ -1179,6 +1260,43 @@ thead th:first-child {
 
 tbody tr:hover td {
   background: var(--color-bg-sutil);
+}
+
+/* tabla de posiciones de un torneo (vista Partidos) */
+.tabla-torneo thead th {
+  cursor: default;
+}
+
+.tabla-torneo__pos {
+  display: inline-block;
+  min-width: 1.5rem;
+  color: var(--color-texto-suave);
+}
+
+.tabla-torneo__pts {
+  font-weight: 700;
+}
+
+/* nuestro equipo resaltado (también en la primera columna fija) */
+.tabla-torneo .fila-propia td,
+.tabla-torneo .fila-propia td:first-child {
+  background: color-mix(in srgb, var(--color-acento) 14%, var(--color-bg-elevado));
+  font-weight: 700;
+}
+
+.torneo__pie {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-texto-tenue);
+}
+
+.panel__titulo small {
+  font-weight: 500;
+  color: var(--color-texto-suave);
 }
 
 /* "Ver todos" / "Ver menos" debajo de una tabla recortada */

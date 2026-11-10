@@ -52,6 +52,158 @@ export function filtrarPartidos(data, filtros = {}) {
   return new Set(partidos.map((p) => p.id_partido));
 }
 
+/** Torneos (tablas de posiciones guardadas en data.torneos, del más nuevo al
+ * más viejo) para mostrar en la vista Partidos: todos, o solo el de la
+ * competencia filtrada si hay una. No dependen del resto de los filtros: la
+ * tabla es de toda la liga, no solo de nuestros partidos. */
+export function torneosVisibles(data, competencia) {
+  const torneos = data.torneos ?? [];
+  return competencia ? torneos.filter((t) => t.competencia === competencia) : torneos;
+}
+
+/** "Cómo nos fue" en un torneo: nuestra fila de la tabla más la cantidad de
+ * equipos (para decir "4.º de 10"). null si nuestro equipo no figura. */
+export function resumenTorneo(torneo) {
+  const propia = torneo.tabla.find((f) => f.propio);
+  return propia ? { ...propia, total: torneo.tabla.length } : null;
+}
+
+// ---------------- próximo rival ----------------
+// Los datos vienen de torneos/*.json (scripts/actualizar_torneos.py): el próximo
+// partido de nuestro equipo y los resultados del rival en ese torneo. El
+// análisis es por reglas (umbrales contra la media del torneo), no estadística
+// seria: con pocos partidos es orientativo, y el texto lo avisa.
+
+/** Próximo partido a mostrar: el del torneo más nuevo que todavía tenga uno por
+ * jugar a partir de `hoy` ("YYYY-MM-DD", se inyecta para testear). Si la
+ * foto es vieja y ese partido ya pasó, no se muestra nada en vez de un rival
+ * viejo. null si no hay. */
+export function proximoPartido(data, hoy) {
+  for (const torneo of data.torneos ?? []) {
+    if (torneo.proximo && torneo.proximo.fecha >= hoy) return { torneo, proximo: torneo.proximo };
+  }
+  return null;
+}
+
+// "PUCHITO F.C." y "Puchito FC" son el mismo equipo: sin acentos, sin puntos,
+// en minúsculas, para cruzar los nombres de la liga con los que carga el Sheet.
+export function normalizarNombreEquipo(nombre) {
+  return nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** Cómo nos fue contra un rival en nuestros propios partidos (cualquier torneo
+ * o amistoso), cruzando por nombre normalizado. null si nunca lo enfrentamos. */
+export function historialContraRival(data, nombreRival) {
+  const clave = normalizarNombreEquipo(nombreRival);
+  const partidos = data.partidos
+    .filter((p) => normalizarNombreEquipo(p.rival) === clave)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (partidos.length === 0) return null;
+  const cuenta = (r) => partidos.filter((p) => p.resultado === r).length;
+  return {
+    pj: partidos.length, g: cuenta("G"), e: cuenta("E"), p: cuenta("P"),
+    gf: partidos.reduce((a, p) => a + p.gf, 0), gc: partidos.reduce((a, p) => a + p.gc, 0),
+    ultimo: partidos[partidos.length - 1],
+  };
+}
+
+const UMBRAL_ALTO = 1.25; // vs la media del torneo
+const UMBRAL_BAJO = 0.75;
+const MUESTRA_CHICA = 5; // partidos con marcador por debajo de los cuales se avisa
+
+const coma = (n) => n.toFixed(1).replace(".", ",");
+
+/** Análisis del rival del próximo partido a partir de su torneo. Devuelve
+ * { rival, n, gfPj, gcPj, media, forma, bullets, conclusion, aviso } o null si
+ * no hay próximo partido. `bullets[].tono` es desde NUESTRO punto de vista:
+ * "bueno" (rival flojo en algo), "malo" (rival fuerte), "neutro". */
+export function analisisRival(torneo) {
+  const prox = torneo.proximo;
+  if (!prox) return null;
+  const partidos = prox.partidos_rival ?? [];
+  const n = partidos.length;
+  const totalPj = torneo.tabla.reduce((a, f) => a + f.pj, 0);
+  const media = totalPj ? torneo.tabla.reduce((a, f) => a + f.gf, 0) / totalPj : null; // goles por equipo y partido
+  const filaRival = torneo.tabla.find((f) => f.equipo === prox.rival) ?? null;
+  const nuestra = torneo.tabla.find((f) => f.propio) ?? null;
+  const resultado = (p) => (p.gf > p.gc ? "G" : p.gf < p.gc ? "P" : "E");
+  const forma = partidos.slice(-5).map(resultado); // del más viejo al más nuevo
+
+  const bullets = [];
+  let nivelAtaque = null;
+  let nivelDefensa = null;
+  let gfPj = null;
+  let gcPj = null;
+  if (n > 0 && media) {
+    gfPj = partidos.reduce((a, p) => a + p.gf, 0) / n;
+    gcPj = partidos.reduce((a, p) => a + p.gc, 0) / n;
+    const rAtaque = gfPj / media;
+    const rDefensa = gcPj / media;
+    if (rAtaque >= UMBRAL_ALTO) {
+      nivelAtaque = "alto";
+      bullets.push({ tipo: "ataque", tono: "malo", texto: `Ataque muy productivo: mete ${coma(gfPj)} goles por partido (la media del torneo es ${coma(media)}).` });
+    } else if (rAtaque <= UMBRAL_BAJO) {
+      nivelAtaque = "bajo";
+      bullets.push({ tipo: "ataque", tono: "bueno", texto: `Le cuesta hacer goles: ${coma(gfPj)} por partido contra una media de ${coma(media)}.` });
+    } else {
+      nivelAtaque = "medio";
+      bullets.push({ tipo: "ataque", tono: "neutro", texto: `Ataque en la media: ${coma(gfPj)} goles por partido (media ${coma(media)}).` });
+    }
+    if (rDefensa >= UMBRAL_ALTO) {
+      nivelDefensa = "flojo";
+      bullets.push({ tipo: "defensa", tono: "bueno", texto: `Defensa frágil: recibe ${coma(gcPj)} goles por partido (media ${coma(media)}).` });
+    } else if (rDefensa <= UMBRAL_BAJO) {
+      nivelDefensa = "solido";
+      bullets.push({ tipo: "defensa", tono: "malo", texto: `Defensa sólida: recibe solo ${coma(gcPj)} goles por partido (media ${coma(media)}).` });
+    } else {
+      nivelDefensa = "medio";
+      bullets.push({ tipo: "defensa", tono: "neutro", texto: `Defensa en la media: recibe ${coma(gcPj)} goles por partido (media ${coma(media)}).` });
+    }
+  }
+
+  if (forma.length > 0) {
+    let racha = 0;
+    for (let i = forma.length - 1; i >= 0 && forma[i] === forma[forma.length - 1]; i--) racha++;
+    const ultimo = forma[forma.length - 1];
+    const g = forma.filter((r) => r === "G").length;
+    const e = forma.filter((r) => r === "E").length;
+    const p = forma.filter((r) => r === "P").length;
+    if (ultimo === "G" && racha >= 3) {
+      bullets.push({ tipo: "forma", tono: "malo", texto: `Viene en racha: ${racha} victorias seguidas.` });
+    } else if (ultimo === "P" && racha >= 3) {
+      bullets.push({ tipo: "forma", tono: "bueno", texto: `Viene mal: ${racha} derrotas seguidas.` });
+    } else {
+      bullets.push({ tipo: "forma", tono: "neutro", texto: `En sus últimos ${forma.length} partidos: ${g} ganado${g === 1 ? "" : "s"}, ${e} empatado${e === 1 ? "" : "s"}, ${p} perdido${p === 1 ? "" : "s"}.` });
+    }
+  }
+
+  if (filaRival) {
+    const vs = nuestra ? `; nosotros vamos ${nuestra.pos}.º con ${nuestra.pts}` : "";
+    bullets.push({ tipo: "posicion", tono: "neutro", texto: `Va ${filaRival.pos}.º de ${torneo.tabla.length} con ${filaRival.pts} pts${vs}.` });
+  }
+
+  const conclusiones = {
+    "alto|flojo": "Se espera un partido de muchos goles, de los dos lados.",
+    "alto|solido": "Es un rival completo: va a costar.",
+    "alto|medio": "Ojo con su ataque: conviene no regalarle espacios.",
+    "bajo|flojo": "Hay espacio para hacerle goles, y poco peligro del otro lado.",
+    "bajo|solido": "Se viene un partido cerrado, de pocos goles.",
+    "medio|flojo": "Hay espacio para hacerle goles.",
+    "medio|solido": "Su defensa va a ser un hueso: hay que tener paciencia.",
+  };
+  return {
+    rival: prox.rival, n, gfPj, gcPj, media, forma, bullets,
+    conclusion: conclusiones[`${nivelAtaque}|${nivelDefensa}`] ?? null,
+    aviso: n < MUESTRA_CHICA ? `Muestra chica: solo ${n} partido${n === 1 ? "" : "s"} con resultado, tomalo como orientativo.` : null,
+  };
+}
+
 /** Últimos N resultados (G/E/P) del set filtrado, del más viejo al más nuevo
  * (para dibujar una racha de puntitos de izquierda a derecha). */
 export function ultimosResultados(data, idsPartidos, n = 5) {

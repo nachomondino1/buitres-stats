@@ -44,6 +44,27 @@ Y abrir `http://localhost:8008`. No sirve abrir `site/index.html` directo con do
 servidor. Los filtros quedan en la URL (`?tipo=Torneo&competencia=Apertura+2026&ultimos=5`), así que un link
 específico se puede compartir tal cual.
 
+## Torneos (tabla de posiciones de la liga)
+
+La vista Partidos muestra la tabla de cada torneo (Apertura 2026, Clausura 2026...).
+Esas tablas son una "foto" guardada en `torneos/<id_torneo>.json` (versionada, así el
+historial queda aunque la liga lo saque de su sitio). Se generan con la API que usa la
+página de posiciones de North Champ:
+
+```bash
+./venv/bin/python scripts/actualizar_torneos.py        # todos los de torneos.json
+./venv/bin/python scripts/actualizar_torneos.py 3991   # solo uno
+```
+
+Si queda un partido por jugar, la foto también trae el próximo rival y sus resultados
+(para el panel "Próximo partido" del Resumen). El workflow "Sync data" corre este script
+solo antes de exportar, así que cada vez que se dispara (push a `main` o "Run workflow")
+el sitio sale con la tabla y el próximo rival al día; si la API falla, usa las fotos
+commiteadas. Para guardar el historial de un torneo, commitear los `torneos/*.json`
+(sobre todo al terminar cada torneo). Para sumar un torneo nuevo, agregar su `id_torneo` (el número al final
+del link `...torneos_zona_posiciones.html?id_torneo=3991`) a `torneos.json`, correr el
+script y commitear.
+
 ## Tests
 
 ```
