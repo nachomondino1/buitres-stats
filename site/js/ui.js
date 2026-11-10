@@ -17,7 +17,12 @@ import {
   rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
+  analisisRival,
+  historialContraRival,
+  proximoPartido,
+  resumenTorneo,
   topJugadoresPorCategoria,
+  torneosVisibles,
   ultimoPartido,
   ultimosResultados,
 } from "./stats.js";
@@ -563,6 +568,7 @@ function renderResumen(cont, ids) {
   const forma = ultimosResultados(estado.data, ids, 5);
   cont.innerHTML = `
     <div class="paneles">
+      ${renderProximoPartido()}
       ${renderHeroResumen(r, forma)}
       ${renderJugadoresDestacados(ids)}
       <div class="resumen__par">
@@ -636,6 +642,41 @@ function filaJugador(etiqueta, detalle, jugador) {
       <span class="fila__valor fila__valor--jugador">${avatarHTML(jugador.nombre)}${jugador.nombre}</span>
     </button>
   `;
+}
+
+// "Próximo partido": rival, cuándo y dónde, y un análisis breve armado con sus
+// resultados en el torneo (ver analisisRival() en stats.js). Independiente de
+// los filtros. Los datos vienen de torneos/*.json; si la foto es vieja y el
+// partido ya pasó, el panel no aparece (ver proximoPartido()).
+const fmtDiaLargo = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+
+function renderProximoPartido() {
+  const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD en hora local
+  const elegido = proximoPartido(estado.data, hoy);
+  if (!elegido) return "";
+  const { torneo, proximo } = elegido;
+  const a = analisisRival(torneo);
+  const historial = historialContraRival(estado.data, proximo.rival);
+  const dia = fmtDiaLargo.format(new Date(`${proximo.fecha}T00:00:00Z`));
+  const lugar = [proximo.sede, proximo.cancha ? `cancha ${proximo.cancha}` : null].filter(Boolean).join(", ");
+  const detalle = [`${dia} · ${proximo.hora}`, lugar, `${torneo.competencia} (${proximo.etapa})`].filter(Boolean).join(" · ");
+
+  const items = a.bullets.map((b) => `<li class="analisis__item analisis__item--${b.tono}">${b.texto}</li>`).join("");
+  const antecedentes = historial
+    ? `<p class="analisis__nota">Ya los enfrentamos ${historial.pj} ${historial.pj === 1 ? "vez" : "veces"}: ${historial.g}G ${historial.e}E ${historial.p}P (goles ${historial.gf}-${historial.gc}). Último: ${historial.ultimo.gf}-${historial.ultimo.gc} el ${fmtFechaISO(historial.ultimo.fecha)}.</p>`
+    : "";
+  const cuerpo = `
+    <div class="proximo__rival">
+      <span class="proximo__vs">Los Buitres vs</span>
+      <strong class="proximo__nombre">${proximo.rival}</strong>
+      ${a.forma.length ? `<span class="proximo__forma">Su forma ${puntosForma(a.forma)}</span>` : ""}
+    </div>
+    ${items ? `<ul class="analisis">${items}</ul>` : ""}
+    ${a.conclusion ? `<p class="analisis__conclusion">${a.conclusion}</p>` : ""}
+    ${antecedentes}
+    <p class="analisis__nota">Análisis automático con los resultados del torneo${a.aviso ? `. ${a.aviso}` : "."} Datos al ${fmtFechaISO(torneo.actualizado)}.</p>
+  `;
+  return panel("Próximo partido", detalle, cuerpo, { clase: "panel--proximo" });
 }
 
 // "hero" de Resumen: un solo panel con lo que más importa del equipo
@@ -1002,10 +1043,63 @@ function renderPartidosVista(cont, ids) {
   cont.innerHTML = `
     <div class="paneles">
       ${renderTarjetaUltimoPartido()}
-      ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`)}
+      ${renderTorneos()}
+      ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
     </div>
   `;
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
+
+  // "Ver nuestros partidos" de un torneo: lo deja como competencia filtrada y
+  // baja a la lista de partidos, que ya respeta ese filtro.
+  for (const boton of cont.querySelectorAll("[data-ver-partidos-torneo]")) {
+    boton.addEventListener("click", () => {
+      estado.filtros.competencia = boton.dataset.verPartidosTorneo;
+      construirControlesFiltro();
+      onFiltrosCambiaron();
+      document.getElementById("seccion-partidos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
+// ---------------- torneos: tabla de posiciones de cada competencia ----------------
+// Las tablas son una "foto" guardada en el repo (torneos/*.json, ver
+// scripts/actualizar_torneos.py), de toda la liga: no dependen de los filtros
+// salvo el de competencia, que deja solo ese torneo.
+
+const COLUMNAS_TORNEO = [
+  ["Pts", "Puntos"], ["PJ", "Partidos jugados"], ["PG", "Partidos ganados"], ["PE", "Partidos empatados"],
+  ["PP", "Partidos perdidos"], ["GF", "Goles a favor"], ["GC", "Goles en contra"], ["Dif", "Diferencia de gol"],
+];
+
+function renderTorneos() {
+  return torneosVisibles(estado.data, estado.filtros.competencia).map(panelTorneo).join("");
+}
+
+function panelTorneo(torneo) {
+  const r = resumenTorneo(torneo);
+  const resumen = r
+    ? `Puesto ${r.pos}.º de ${r.total} · ${r.pts} pts · ${r.pg}G ${r.pe}E ${r.pp}P · GF ${r.gf} · GC ${r.gc}`
+    : "";
+  const signo = (n) => (n > 0 ? `+${n}` : String(n));
+  const filas = torneo.tabla.map((f) => `
+    <tr${f.propio ? ' class="fila-propia"' : ""}>
+      <td><span class="tabla-torneo__pos">${f.pos}</span>${f.equipo}</td>
+      <td class="tabla-torneo__pts">${f.pts}</td><td>${f.pj}</td><td>${f.pg}</td><td>${f.pe}</td><td>${f.pp}</td>
+      <td>${f.gf}</td><td>${f.gc}</td><td>${signo(f.dif)}</td>
+    </tr>`).join("");
+  const cuerpo = `
+    <div class="tabla-wrap">
+      <table class="tabla-torneo">
+        <thead><tr><th>Equipo</th>${COLUMNAS_TORNEO.map(([sigla, glosario]) => `<th><abbr title="${glosario}">${sigla}</abbr></th>`).join("")}</tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+    <div class="torneo__pie">
+      <span>Tabla al ${fmtFechaISO(torneo.actualizado)} · Fuente: North Champ</span>
+      ${r ? `<button type="button" class="enlace" data-ver-partidos-torneo="${torneo.competencia}">Ver nuestros partidos →</button>` : ""}
+    </div>
+  `;
+  return panel(`${torneo.competencia} <small>Zona ${torneo.categoria}</small>`, resumen, cuerpo);
 }
 
 // una fila por rival enfrentado, no solo el más repetido (eso ya lo cubre

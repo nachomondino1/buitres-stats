@@ -20,6 +20,8 @@ import pandas as pd
 
 import schema
 
+RAIZ = Path(__file__).resolve().parent
+
 # Google Sheets usa la misma época que Excel para fechas/horas como "serial":
 # un entero de días (parte entera) + fracción de día (parte decimal) desde acá.
 EPOCA_SHEETS = dt.date(1899, 12, 30)
@@ -567,13 +569,32 @@ def limpiar_nan(obj):
 
 # ---------- CLI ----------
 
-def exportar(path_entrada, backend="xlsx"):
+def cargar_torneos(directorio, equipo_propio):
+    """Lee las fotos de torneos/*.json (las guarda scripts/actualizar_torneos.py) y
+    marca con propio=True la fila de nuestro equipo en cada tabla. Devuelve
+    (torneos, warnings); del más nuevo al más viejo. Sin directorio: sin torneos."""
+    torneos, warnings = [], []
+    if not directorio or not Path(directorio).is_dir():
+        return torneos, warnings
+    for path in sorted(Path(directorio).glob("*.json")):
+        t = json.loads(path.read_text(encoding="utf-8"))
+        t["tabla"] = [dict(f, propio=(f["equipo"] == equipo_propio)) for f in t["tabla"]]
+        if equipo_propio and not any(f["propio"] for f in t["tabla"]):
+            warnings.append(f"torneo {t['competencia']}: {equipo_propio!r} no figura en la tabla ({path.name})")
+        torneos.append(t)
+    torneos.sort(key=lambda t: t["inicio"], reverse=True)
+    return torneos, warnings
+
+
+def exportar(path_entrada, backend="xlsx", torneos_dir=None, equipo_propio=None):
     """Corre el pipeline completo y devuelve el dict final (meta.warnings incluidas)."""
     tablas = load_tables(backend, path_entrada)
     tablas = normalizar(tablas)
     tablas = recalcular(tablas)
     warnings = validar(tablas)
     data = construir_json(tablas, warnings, source=backend)
+    data["torneos"], warnings_torneos = cargar_torneos(torneos_dir, equipo_propio)
+    data["meta"]["warnings"].extend(warnings_torneos)
     return data
 
 
@@ -583,11 +604,14 @@ def main(argv=None):
                      help="Ruta al xlsx (backend xlsx) o ignorado (backend gsheets, usa $SHEET_ID)")
     ap.add_argument("--backend", choices=["xlsx", "gsheets"], default="xlsx")
     ap.add_argument("--out", default="site/data/data.json")
+    ap.add_argument("--torneos", default=str(RAIZ / "torneos"),
+                     help="Carpeta con las fotos de torneos (scripts/actualizar_torneos.py)")
     args = ap.parse_args(argv)
 
     entrada = args.entrada if args.backend == "xlsx" else None
     try:
-        data = exportar(entrada, backend=args.backend)
+        equipo_propio = json.loads((RAIZ / "torneos.json").read_text(encoding="utf-8"))["equipo"]
+        data = exportar(entrada, backend=args.backend, torneos_dir=args.torneos, equipo_propio=equipo_propio)
     except ExportError as e:
         print("ERROR de validación, no se generó el JSON:", file=sys.stderr)
         for msg in e.args[0]:

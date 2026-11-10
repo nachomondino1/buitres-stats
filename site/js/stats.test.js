@@ -21,7 +21,13 @@ import {
   rachasHistoricas,
   resumenEquipo,
   tablaJugadores,
+  analisisRival,
+  historialContraRival,
+  normalizarNombreEquipo,
+  proximoPartido,
+  resumenTorneo,
   topJugadoresPorCategoria,
+  torneosVisibles,
   ultimoPartido,
   ultimosResultados,
 } from "./stats.js";
@@ -487,4 +493,107 @@ test("logrosJugador: solo los badges cuyo umbral se cumple, en orden fijo", () =
 test("logrosJugador: [] para un jugador sin ningún logro todavía", () => {
   assert.deepEqual(logrosJugador(DATA2, TODOS2, "J03"), []);
   assert.deepEqual(logrosJugador(DATA2, TODOS2, "J04"), []);
+});
+
+// ---------------- torneos ----------------
+
+const TORNEOS = {
+  torneos: [
+    { competencia: "Clausura 2026", tabla: [{ pos: 1, equipo: "A", propio: false }, { pos: 2, equipo: "LOS BUITRES", pts: 9, pj: 7, pg: 3, pe: 0, pp: 4, gf: 16, gc: 22, dif: -6, propio: true }] },
+    { competencia: "Apertura 2026", tabla: [{ pos: 1, equipo: "A", propio: false }] },
+  ],
+};
+
+test("torneosVisibles: todos si no hay competencia filtrada, uno si la hay", () => {
+  assert.deepEqual(torneosVisibles(TORNEOS, undefined).map((t) => t.competencia), ["Clausura 2026", "Apertura 2026"]);
+  assert.deepEqual(torneosVisibles(TORNEOS, "Apertura 2026").map((t) => t.competencia), ["Apertura 2026"]);
+  assert.deepEqual(torneosVisibles(TORNEOS, "Inexistente"), []);
+});
+
+test("torneosVisibles: datos sin torneos (json viejo) no rompen", () => {
+  assert.deepEqual(torneosVisibles({}, undefined), []);
+});
+
+test("resumenTorneo: nuestra fila + total de equipos; null si no figuramos", () => {
+  const r = resumenTorneo(TORNEOS.torneos[0]);
+  assert.equal(r.pos, 2);
+  assert.equal(r.total, 2);
+  assert.equal(r.pts, 9);
+  assert.equal(resumenTorneo(TORNEOS.torneos[1]), null);
+});
+
+// ---------------- próximo rival ----------------
+
+// media del torneo = 20 goles / 8 PJ = 2,5 por equipo y partido
+const tablaRival = [
+  { pos: 1, equipo: "RIVAL FC", pts: 13, pj: 4, pg: 4, pe: 0, pp: 0, gf: 8, gc: 2, dif: 6, propio: false },
+  { pos: 2, equipo: "LOS BUITRES", pts: 9, pj: 4, pg: 3, pe: 0, pp: 1, gf: 12, gc: 6, dif: 6, propio: true },
+];
+const torneoConProximo = (partidos_rival, extra = {}) => ({
+  competencia: "Clausura 2026",
+  tabla: tablaRival,
+  proximo: { fecha: "2026-11-14", hora: "14:00", rival: "RIVAL FC", partidos_rival, ...extra },
+});
+const pr = (gf, gc) => ({ fecha: "2026-10-01", contra: "X", gf, gc });
+
+test("proximoPartido: el del torneo más nuevo con partido por jugar; nada si ya pasó", () => {
+  const data = { torneos: [torneoConProximo([]), { competencia: "Apertura 2026", tabla: [], proximo: null }] };
+  assert.equal(proximoPartido(data, "2026-11-10").proximo.rival, "RIVAL FC");
+  assert.equal(proximoPartido(data, "2026-11-14").proximo.rival, "RIVAL FC"); // el mismo día todavía cuenta
+  assert.equal(proximoPartido(data, "2026-11-15"), null); // foto vieja: el partido ya pasó
+  assert.equal(proximoPartido({}, "2026-11-10"), null);
+});
+
+test("normalizarNombreEquipo: acentos, puntos y mayúsculas", () => {
+  assert.equal(normalizarNombreEquipo("PUCHITO F.C."), normalizarNombreEquipo("Puchito FC"));
+  assert.equal(normalizarNombreEquipo("PUÑETEROS"), normalizarNombreEquipo("Puneteros"));
+  assert.notEqual(normalizarNombreEquipo("404 FC"), normalizarNombreEquipo("Celta FC"));
+});
+
+test("historialContraRival: cruza por nombre normalizado; null si nunca lo enfrentamos", () => {
+  const data = { partidos: [
+    { fecha: "2026-01-10", rival: "Rival F.C.", gf: 2, gc: 1, resultado: "G" },
+    { fecha: "2026-02-10", rival: "RIVAL FC", gf: 0, gc: 3, resultado: "P" },
+    { fecha: "2026-03-10", rival: "Otro", gf: 1, gc: 1, resultado: "E" },
+  ] };
+  const h = historialContraRival(data, "RIVAL FC");
+  assert.deepEqual([h.pj, h.g, h.e, h.p, h.gf, h.gc], [2, 1, 0, 1, 2, 4]);
+  assert.equal(h.ultimo.fecha, "2026-02-10");
+  assert.equal(historialContraRival(data, "NUNCA VISTO"), null);
+});
+
+test("analisisRival: ataque alto y defensa sólida -> rival completo, bullets en tono malo", () => {
+  // 4 partidos: 14 GF (3,5/pj, ratio 1,4) y 2 GC (0,5/pj, ratio 0,2)
+  const a = analisisRival(torneoConProximo([pr(4, 0), pr(3, 1), pr(4, 0), pr(3, 1)]));
+  assert.equal(a.bullets.find((b) => b.tipo === "ataque").tono, "malo");
+  assert.equal(a.bullets.find((b) => b.tipo === "defensa").tono, "malo");
+  assert.match(a.bullets.find((b) => b.tipo === "defensa").texto, /sólida/);
+  assert.equal(a.conclusion, "Es un rival completo: va a costar.");
+  assert.deepEqual(a.forma, ["G", "G", "G", "G"]);
+  assert.match(a.bullets.find((b) => b.tipo === "forma").texto, /4 victorias seguidas/);
+  assert.match(a.aviso, /Muestra chica: solo 4 partidos/);
+});
+
+test("analisisRival: pocos goles a favor y muchos en contra -> tono bueno y 'espacio para hacerle goles'", () => {
+  // 5 partidos: 2 GF (0,4/pj, ratio 0,16) y 20 GC (4/pj, ratio 1,6)
+  const a = analisisRival(torneoConProximo([pr(0, 4), pr(1, 4), pr(0, 4), pr(1, 4), pr(0, 4)]));
+  assert.equal(a.bullets.find((b) => b.tipo === "ataque").tono, "bueno");
+  assert.match(a.bullets.find((b) => b.tipo === "ataque").texto, /Le cuesta hacer goles/);
+  assert.equal(a.bullets.find((b) => b.tipo === "defensa").tono, "bueno");
+  assert.match(a.bullets.find((b) => b.tipo === "defensa").texto, /Defensa frágil/);
+  assert.equal(a.conclusion, "Hay espacio para hacerle goles, y poco peligro del otro lado.");
+  assert.match(a.bullets.find((b) => b.tipo === "forma").texto, /5 derrotas seguidas/);
+  assert.equal(a.aviso, null); // 5 partidos: ya no es muestra chica
+});
+
+test("analisisRival: sin partidos con resultado no inventa ataque/defensa; avisa y sigue con la posición", () => {
+  const a = analisisRival(torneoConProximo([]));
+  assert.deepEqual(a.bullets.map((b) => b.tipo), ["posicion"]);
+  assert.match(a.bullets[0].texto, /Va 1\.º de 2 con 13 pts; nosotros vamos 2\.º con 9/);
+  assert.equal(a.conclusion, null);
+  assert.match(a.aviso, /solo 0 partidos/);
+});
+
+test("analisisRival: null si el torneo no tiene próximo partido", () => {
+  assert.equal(analisisRival({ tabla: tablaRival, proximo: null }), null);
 });

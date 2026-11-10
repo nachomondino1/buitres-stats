@@ -296,7 +296,7 @@ def test_json_es_serializable_y_sin_nan(workbook_path):
 def test_meta_schema(workbook_path):
     data = exportar(workbook_path())
     assert data["meta"]["schema_version"] == 1
-    assert set(data.keys()) == {"meta", "jugadores", "partidos", "alineaciones", "goles"}
+    assert set(data.keys()) == {"meta", "jugadores", "partidos", "alineaciones", "goles", "torneos"}
     assert set(data["jugadores"][0].keys()) == {
         "id_jugador", "nombre", "apellido", "apodo", "origen", "nombre_mostrar",
     }

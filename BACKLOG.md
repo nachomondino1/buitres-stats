@@ -2,7 +2,11 @@
 
 De `SPEC_buitres_v3.md` §11:
 
-- Tabla `torneo_partidos` (fecha, torneo, local, visitante, goles_local, goles_visitante)
+- ~~Tabla de posiciones por torneo~~ ✅ hecho de otra forma: fotos de la tabla oficial
+  de cada torneo en `torneos/` (ver DECISIONS.md). Lo que sigue pendiente de esta idea
+  es reconstruir/mostrar los partidos de los demás equipos, premios, goleadores y fair
+  play del torneo (la API los tiene, no se guardaron todavía).
+- (original) Tabla `torneo_partidos` (fecha, torneo, local, visitante, goles_local, goles_visitante)
   para reconstruir posiciones, en vez de la hoja corrupta `Torneo Apertura 2026`. Requiere
   recarga manual de resultados.
 - Red/grafo interactivo de dúos asistidor→goleador.

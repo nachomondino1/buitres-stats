@@ -13,6 +13,69 @@ apellido" (`nombreCorto()`: "Sebastian O."); el nombre completo va en el
 con valor > 0 la fila no se dibuja (un 0 no cuenta como puesto). `sw.js` a
 `buitres-v9`.
 
+## Torneos: tabla de posiciones de cada competencia en la vista Partidos (pedido de la usuaria)
+
+La usuaria quería ir guardando "cómo nos fue" en cada torneo (Apertura, Clausura...)
+y verlo en Partidos. Pasó un doc con capturas de la página de la liga y los links de
+cada torneo (`northchamp.com.ar/torneos_zona_posiciones.html?id_torneo=...`).
+
+- **Fuente:** esa página arma todo con una API JSON pública
+  (`api.northchamp.com.ar/torneos/datos` y `/torneos/posiciones`), así que se lee
+  eso en vez de scrapear HTML ni transcribir capturas. Es una API sin documentar: si
+  cambia, `scripts/actualizar_torneos.py` falla con un error claro y las fotos ya
+  guardadas siguen sirviendo.
+- **Se guarda una "foto" versionada** (`torneos/<id>.json`: competencia, categoría,
+  inicio, fecha de la foto y la tabla) en vez de pedir la API en cada sync: el
+  historial de cada torneo queda en el repo aunque la liga lo borre, el export no
+  depende de la red (CI determinístico, tests sin mocks de HTTP) y un torneo en
+  curso se refresca corriendo el script. Costo: ese refresco es manual (a diferencia
+  del Sheet); si molesta se puede agregar el script al workflow con commit-back.
+- **Qué torneos:** `torneos.json` (`equipo`: el nombre exacto en la liga, para
+  resaltar nuestra fila; `torneos`: ids). `competencia` se arma como
+  `"{Apertura|Clausura} {año de inicio}"`, igual que `partidos.competencia`, así que
+  se unen por ese texto sin tocar el Sheet.
+- **JSON:** `data.json` suma `torneos` (nuevo -> viejo), con `propio: true` en nuestra
+  fila (`cargar_torneos` en `export_data.py`; WARNING si nuestro equipo no figura).
+- **Sitio:** en Partidos, entre "Último partido" y la lista, un panel por torneo
+  (tabla con nuestro equipo resaltado, resumen "Puesto 4.º de 10 · 16 pts · 5G 1E 3P",
+  fecha de la foto y "Ver nuestros partidos →", que filtra por esa competencia). Con
+  el filtro de competencia activo solo se muestra ese torneo. La tabla es de toda la
+  liga: no cambia con los demás filtros. Los números son los oficiales (Apertura
+  cuenta 9 PJ porque incluye un walkover 0-3 que no está en nuestros partidos).
+- **Chequeo cruzado:** Clausura según nuestros partidos (7 PJ, 3-0-4, GF 16, GC 22)
+  coincide exacto con la tabla oficial; Apertura coincide con la captura del doc.
+- Sin mostrar todavía: premios, goleadores y fair play del torneo (la API los tiene).
+  Clausura 2026 ya figura como Zona C (Apertura fue Zona D).
+- `sw.js` a `buitres-v10`.
+
+### Próximo rival + análisis en Resumen (mismo pedido, segunda parte)
+
+Panel "Próximo partido" arriba de todo en Resumen: rival, día/hora/cancha, su
+forma en puntitos y un análisis breve, con los resultados del rival en el torneo.
+
+- **Datos:** `scripts/actualizar_torneos.py` ahora también guarda `proximo` en la
+  foto del torneo (el partido no jugado más cercano de nuestro equipo, vía
+  `/equipos/partidos`, y los partidos con marcador del rival). Los walkovers sin
+  resultado se descartan. Sin partidos por jugar, `proximo: null`.
+- **Análisis por reglas, no IA** (`analisisRival` en `stats.js`, puro y testeado):
+  compara los goles a favor y en contra por partido del rival con la media del
+  torneo (umbrales 1,25x / 0,75x) y arma viñetas de ataque, defensa, forma
+  (racha de 3+ victorias/derrotas) y posición, con un punto verde si el rival es
+  flojo en eso (desde nuestro punto de vista) o rojo si es fuerte, más una frase
+  de conclusión según la combinación ataque/defensa. Con menos de 5 partidos con
+  marcador avisa "muestra chica". También cruza por nombre normalizado con
+  nuestros propios partidos para mostrar el historial contra ese rival, si existe.
+- **Se oculta solo** si el partido ya pasó (`proximoPartido(data, hoy)`): una foto
+  vieja no muestra un rival viejo.
+- **Workflow:** el job de deploy corre `scripts/actualizar_torneos.py` antes de
+  exportar (`continue-on-error`): cada "Sync data" (push a main o "Run workflow")
+  trae la tabla y el próximo rival frescos de la API. Si la API falla, se usan las
+  fotos commiteadas. No hay commit-back: el sitio publicado siempre sale con lo
+  último, pero el historial en `torneos/` se actualiza cuando se commitean las
+  fotos (hacerlo al terminar cada torneo). Sin cron (decisión previa): para tener
+  el análisis fresco antes del sábado, correr "Sync data" a mano (o agregar un cron
+  semanal, hoy queda sugerido).
+
 ## Media goleadora y media de influencias en la tabla de jugadores (pedido de la usuaria)
 
 **Media influencias** (`mediaInfluencia`, (G+A) / PJ, dos decimales) reemplaza a

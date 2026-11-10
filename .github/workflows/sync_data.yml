@@ -59,6 +59,14 @@ jobs:
           python-version: "3.13"
       - run: pip install -r requirements.txt
 
+      # Tabla de posiciones de los torneos + próximo rival, desde la API pública
+      # de North Champ (scripts/actualizar_torneos.py). Si la API falla, el
+      # paso no corta el deploy: el export usa las fotos ya commiteadas en
+      # torneos/ (y, para un torneo que falla, la última foto guardada).
+      - name: Actualizar torneos y próximo rival (North Champ)
+        run: python scripts/actualizar_torneos.py
+        continue-on-error: true
+
       - name: Exportar data.json desde Google Sheets
         env:
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
