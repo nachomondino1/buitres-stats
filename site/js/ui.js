@@ -699,10 +699,14 @@ function renderProximoPartido() {
       <strong class="proximo__nombre">${proximo.rival}</strong>
       ${a.forma.length ? `<span class="proximo__forma">Su forma ${puntosForma(a.forma)}</span>` : ""}
     </div>
-    ${items ? `<ul class="analisis">${items}</ul>` : ""}
-    ${a.conclusion ? `<p class="analisis__conclusion">${a.conclusion}</p>` : ""}
-    ${antecedentes}
-    ${renderResultadosDelRival(proximo)}
+    <div class="proximo__cols">
+      <div>
+        ${items ? `<ul class="analisis">${items}</ul>` : ""}
+        ${a.conclusion ? `<p class="analisis__conclusion">${a.conclusion}</p>` : ""}
+        ${antecedentes}
+      </div>
+      ${renderResultadosDelRival(proximo)}
+    </div>
     <p class="analisis__nota">Análisis automático con los resultados del torneo${a.aviso ? `. ${a.aviso}` : "."} Datos al ${fmtFechaISO(torneo.actualizado)}.</p>
   `;
   return panel("Próximo partido", detalle, cuerpo, { clase: "panel--proximo" });
@@ -1161,7 +1165,7 @@ function renderPartidosVista(cont, ids) {
       ["seccion-historial-rivales", "Historial vs rivales"],
     ])}
     <div class="paneles">
-      <div class="resumen__par" id="seccion-ultimo-proximo">
+      <div class="paneles" id="seccion-ultimo-proximo">
         ${renderTarjetaUltimoPartido()}
         ${renderProximoPartido()}
       </div>
