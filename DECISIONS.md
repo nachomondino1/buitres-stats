@@ -2,6 +2,20 @@
 
 Decisiones tomadas durante el desarrollo que no estaban (o no quedaron resueltas) en `SPEC_buitres_v3.md`, con su motivo.
 
+## Reorganización de vistas, torneo con selector y Equipo ampliado (pedido de la usuaria)
+
+- **Historial vs rivales** pasó de Equipo al final de Partidos: casi nunca se juega
+  dos veces contra el mismo rival, así que se usa poco. Equipo conserva los gráficos de goles.
+- **Subnav** (botones que saltan a cada sección) también en Resumen y Partidos.
+- **Torneos**: un solo panel con selector (por defecto el más nuevo, `data.torneos[0]`)
+  en vez de una tabla por torneo siempre abierta. Con el filtro de competencia queda ese solo.
+- **Próximo partido**: el panel de Partidos suma contra quién ganó/empató/perdió el rival
+  (`resultadosDelRival`); Resumen muestra una fila con el próximo partido y "Ver análisis →" a Partidos.
+- **Equipo**: entretiempo vs resultado final, resultados por horario, récords, tarjetas, plantel
+  y % de pelota parada. "Si metimos el primer gol" no se pudo: `marcador_tras_gol` está cargado
+  en pocos goles y `nro_gol` es por tipo, no cronológico; se usa el marcador del 1T, que está
+  completo. Sin "quién lavó las camisetas" (la usuaria no lo quiere) ni cancha (no hay columna).
+
 ## 4.º y 5.º puesto en "Jugadores destacados" (pedido de la usuaria)
 
 Debajo de las 3 medallas de cada podio, una sola fila chica y tenue con el 4.º y
