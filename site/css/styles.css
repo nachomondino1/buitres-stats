@@ -304,6 +304,10 @@ nav.tabs button {
   min-height: 4.5rem;
 }
 
+.filtros[hidden] {
+  display: none;
+}
+
 /* el botón "Filtros" colapsable solo existe visualmente en mobile (ver media
    query de 600px); en desktop .filtros-panel ya se ve entero siempre. */
 .boton-filtros-toggle {
@@ -644,7 +648,27 @@ main {
   margin-bottom: 0.75rem;
 }
 
-.panel__titulo,
+/* título de cada sección: grande, para ubicarse de un vistazo al scrollear */
+.panel__titulo {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-texto);
+}
+
+.panel__titulo::before {
+  content: "";
+  display: inline-block;
+  width: 0.3rem;
+  height: 1em;
+  margin-right: 0.55rem;
+  vertical-align: -0.12em;
+  border-radius: 2px;
+  background: var(--color-acento);
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.7rem;
@@ -656,7 +680,7 @@ main {
 
 .panel__desc {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--color-texto-tenue);
 }
 
@@ -1295,6 +1319,7 @@ tbody tr:hover td {
 }
 
 .panel__titulo small {
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--color-texto-suave);
 }
@@ -1412,6 +1437,64 @@ tbody tr:hover td {
   padding-left: 1.1rem;
 }
 
+/* video del partido: miniatura grande que se vuelve reproductor */
+#partidos-contenido {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+#partidos-contenido .partido {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-tarjeta, transparent);
+  align-self: start;
+}
+
+.partido-media {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: none;
+  background: #000;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+iframe.partido-media {
+  border: none;
+}
+
+.partido-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.partido-media-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 1.4rem;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.partido-media:hover .partido-media-play,
+.partido-media:focus-visible .partido-media-play {
+  transform: scale(1.1);
+  background: var(--color-acento);
+}
+
 /* ---------- gráficos ---------- */
 
 .grafico-card {
@@ -1512,6 +1595,9 @@ footer.app-footer {
 }
 
 .subnav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: 1px solid var(--color-borde);
   background: var(--color-bg-elevado);
   color: var(--color-texto);
@@ -1524,6 +1610,18 @@ footer.app-footer {
 .subnav button:hover {
   border-color: var(--color-acento);
   color: var(--color-acento);
+}
+
+.app-footer-acciones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+footer.app-footer p {
+  margin: 0;
 }
 
 .ficha-encabezado {
@@ -1830,4 +1928,149 @@ footer.app-footer {
 @media (min-width: 900px) {
   .proximo__cols { grid-template-columns: 1.2fr 1fr; align-items: start; }
   .proximo__cols > .rivalref { grid-template-columns: 1fr; margin-top: 0; }
+}
+
+
+/* ---------- portada (Inicio) ---------- */
+
+.inicio-hero {
+  position: relative;
+  border-radius: var(--radio);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  aspect-ratio: 4 / 3;
+  background: #0b1a12;
+}
+
+.inicio-hero img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+}
+
+@media (min-width: 700px) {
+  .inicio-hero {
+    aspect-ratio: 16 / 9;
+    max-height: 34rem;
+  }
+}
+
+.inicio-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.15) 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.inicio-hero__texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  height: 100%;
+  padding: 1.25rem;
+  color: #fff;
+}
+
+.inicio-hero__titulo {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.inicio-hero__sub {
+  margin: 0.4rem 0 0;
+  max-width: 28rem;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.inicio-hero__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.boton-cta {
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--color-acento);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.boton-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.boton-cta--sec {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.inicio-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.inicio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  background: var(--color-bg-elevado);
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-xs);
+  color: var(--color-texto);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.inicio-card:hover {
+  border-color: var(--color-acento);
+  transform: translateY(-2px);
+}
+
+.inicio-card__icono {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.inicio-card__titulo {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.inicio-card__desc {
+  font-size: 0.9rem;
+  color: var(--color-texto-suave);
+}
+
+.inicio-card__dato {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-acento);
 }

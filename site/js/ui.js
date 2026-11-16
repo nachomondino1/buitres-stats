@@ -90,7 +90,7 @@ function avatarHTML(nombre) {
 const estado = {
   data: null,
   filtros: {},
-  vista: "resumen",
+  vista: "inicio",
   orden: {
     jugadores: { columna: "g", direccion: "desc" },
     rivales: { columna: "pj", direccion: "desc" },
@@ -111,7 +111,12 @@ const estado = {
 // (resultado + alineación + goles), ni una agregación de equipo ni de
 // jugador, así que no encajaba del todo en ninguna de las otras dos (pedido
 // de la usuaria).
-const VISTAS = ["resumen", "partidos", "equipo", "jugadores"];
+const VISTAS = ["inicio", "partidos", "equipo", "jugadores"];
+
+// los filtros globales solo tienen sentido donde hay agregados que filtrar:
+// Inicio y Partidos siempre muestran todo (la portada solo resume lo que ya
+// está en las otras vistas, sin datos propios).
+const VISTAS_CON_FILTROS = ["equipo", "jugadores"];
 
 const JUGADORES_VISIBLES = 10;
 
@@ -119,7 +124,7 @@ const JUGADORES_VISIBLES = 10;
 // link guardado: las mandamos a la vista nueva que más se le parece, en vez
 // de resetear a Resumen en silencio. "partidos" ya no está acá: ahora es una
 // vista real con ese mismo nombre, así que el link viejo cae directo ahí.
-const VISTA_LEGADO = { graficos: "equipo", ficha: "jugadores", duos: "jugadores" };
+const VISTA_LEGADO = { resumen: "inicio", graficos: "equipo", ficha: "jugadores", duos: "jugadores" };
 
 async function init() {
   const main = document.querySelector("main");
@@ -147,7 +152,7 @@ async function init() {
 // tocar el título vuelve a Resumen, como el logo/home de cualquier sitio.
 function construirBotonTitulo() {
   document.getElementById("boton-titulo").addEventListener("click", () => {
-    estado.vista = "resumen";
+    estado.vista = "inicio";
     actualizarURL();
     renderVistaActual();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -268,7 +273,7 @@ function actualizarURL() {
   if (f.competencia) params.set("competencia", f.competencia);
   if (f.resultados && f.resultados.size) params.set("resultados", [...f.resultados].join(","));
   if (f.ultimos != null) params.set("ultimos", String(f.ultimos));
-  if (estado.vista !== "resumen") params.set("vista", estado.vista);
+  if (estado.vista !== "inicio") params.set("vista", estado.vista);
   if (estado.jugadorFichaId) params.set("jugadorId", estado.jugadorFichaId);
   const orden = estado.orden.jugadores;
   if (orden && (orden.columna !== "g" || orden.direccion !== "desc")) {
@@ -487,7 +492,7 @@ function actualizarBadgeFiltros(cont) {
 // ---------------- tabs ----------------
 
 const ETIQUETA_VISTA = {
-  resumen: "📊 Resumen",
+  inicio: "🏠 Inicio",
   partidos: "⚽ Partidos",
   equipo: "🛡️ Equipo",
   jugadores: "👥 Jugadores",
@@ -518,9 +523,11 @@ function marcarTabActiva() {
 function renderVistaActual() {
   marcarTabActiva();
   const main = document.querySelector("main");
-  const ids = idsFiltrados();
+  const conFiltros = VISTAS_CON_FILTROS.includes(estado.vista);
+  document.querySelector(".filtros").hidden = !conFiltros;
+  const ids = conFiltros ? idsFiltrados() : filtrarPartidos(estado.data, {});
 
-  const renderers = { resumen: renderResumen, partidos: renderPartidosVista, equipo: renderEquipo, jugadores: renderJugadores };
+  const renderers = { inicio: renderInicio, partidos: renderPartidosVista, equipo: renderEquipo, jugadores: renderJugadores };
   main.innerHTML = `<section role="tabpanel" id="panel-${estado.vista}" aria-labelledby="tab-${estado.vista}"></section>`;
   renderers[estado.vista](main.querySelector("section"), ids);
 }
@@ -528,10 +535,17 @@ function renderVistaActual() {
 // fila de botones arriba de una vista con varias secciones, para saltar
 // directo a una sin tener que scrollear a mano (las vistas se alargaron al
 // agrupar temas que antes eran pestañas separadas).
+const ICONO_SECCION = {
+  "seccion-resultados": "📊", "seccion-destacados": "⭐", "seccion-rachas": "🔥", "seccion-curiosos": "💡",
+  "seccion-entretiempo": "⏱️", "seccion-horarios": "🕒", "seccion-datos-equipo": "🛡️", "seccion-graficos-equipo": "⚽",
+  "seccion-ultimo-proximo": "📅", "seccion-torneos": "🏆", "seccion-partidos": "🎬", "seccion-historial-rivales": "🆚",
+  "seccion-tabla-jugadores": "📋", "seccion-graficos-jugadores": "📈", "seccion-duos": "🤝", "seccion-comparar": "⚖️", "seccion-ficha": "🪪",
+};
+
 function renderSubnav(items) {
   return `
     <nav class="subnav" aria-label="Secciones de esta vista">
-      ${items.map(([id, etiqueta]) => `<button type="button" data-destino="${id}">${etiqueta}</button>`).join("")}
+      ${items.map(([id, etiqueta]) => `<button type="button" data-destino="${id}"><span class="subnav-icono" aria-hidden="true">${ICONO_SECCION[id] ?? "•"}</span><span class="subnav-texto">${etiqueta}</span></button>`).join("")}
     </nav>
   `;
 }
@@ -567,32 +581,61 @@ function irAPartidos() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function renderResumen(cont, ids) {
+// Portada: foto del equipo, un botón principal, una card por vista y un
+// mini resumen. No calcula nada nuevo: reusa los paneles de Partidos, Equipo
+// y Jugadores, siempre sin filtros.
+function irAVista(vista, destino) {
+  estado.vista = vista;
+  actualizarURL();
+  renderVistaActual();
+  const el = destino && document.getElementById(destino);
+  if (el) el.scrollIntoView({ block: "start" });
+  else window.scrollTo({ top: 0 });
+}
+
+function renderInicio(cont, ids) {
   const r = resumenEquipo(estado.data, ids);
-  if (r.pj === 0) {
-    cont.innerHTML = `<p class="estado-vacio">No hay partidos para estos filtros.</p>${renderTarjetaUltimoPartidoMini()}`;
-    return;
-  }
   const forma = ultimosResultados(estado.data, ids, 5);
+  const conVideo = estado.data.partidos.filter((p) => p.link_video).length;
+  const cards = [
+    ["partidos", "🎬", "Partidos", "Mirá cada partido en video, con alineación, goles y las tablas de los torneos.",
+      `${r.pj} partidos · ${conVideo} con video`],
+    ["equipo", "🛡️", "Equipo", "Rachas, récords, cómo arrancamos y cerramos los partidos, y de dónde vienen los goles.",
+      `${r.g} ganados · ${r.e} empatados · ${r.p} perdidos`],
+    ["jugadores", "👥", "Jugadores", "La tabla de cada uno, su ficha, los dúos que más gol hacen y un comparador.",
+      `${estado.data.jugadores.length} jugadores`],
+  ];
   cont.innerHTML = `
-    ${renderSubnav([
-      ["seccion-resultados", "Resultados"],
-      ["seccion-destacados", "Destacados"],
-      ["seccion-rachas", "Rachas"],
-      ["seccion-curiosos", "Datos curiosos"],
-    ])}
-    <div class="paneles">
-      ${renderHeroResumen(r, forma)}
-      ${renderJugadoresDestacados(ids)}
-      <div class="resumen__par">
-        ${renderRachasHistoricas(ids, r.racha)}
-        ${renderDatosCuriosos(ids)}
+    <div class="inicio-hero">
+      <img src="media/equipo.jpg" alt="El plantel de Los Buitres posando en la cancha" width="1400" height="1050" fetchpriority="high">
+      <div class="inicio-hero__texto">
+        <div>
+          <h2 class="inicio-hero__titulo">Los Buitres</h2>
+          <p class="inicio-hero__sub">Todos nuestros partidos, goles y estadísticas, en un solo lugar.</p>
+        </div>
+        <div class="inicio-hero__botones">
+          <button type="button" class="boton-cta" data-ir-vista="partidos" data-ir-destino="seccion-partidos">▶ Ver los partidos</button>
+          <button type="button" class="boton-cta boton-cta--sec" data-ir-vista="jugadores">👥 Ver jugadores</button>
+        </div>
       </div>
     </div>
+    <div class="inicio-cards">
+      ${cards.map(([vista, icono, titulo, desc, dato]) => `
+        <button type="button" class="inicio-card" data-ir-vista="${vista}">
+          <span class="inicio-card__icono" aria-hidden="true">${icono}</span>
+          <span class="inicio-card__titulo">${titulo}</span>
+          <span class="inicio-card__desc">${desc}</span>
+          <span class="inicio-card__dato">${dato}</span>
+        </button>`).join("")}
+    </div>
+    <div class="paneles">
+      ${r.pj === 0 ? "" : renderHeroResumen(r, forma)}
+      ${r.pj === 0 ? "" : renderJugadoresDestacados(ids)}
+    </div>
   `;
-  activarScrollASecciones(cont);
-  // selector genérico: el podio de top 3 y las filas de curiosidades con
-  // jugador son botones distintos, todos con data-jugador-id.
+  for (const boton of cont.querySelectorAll("[data-ir-vista]")) {
+    boton.addEventListener("click", () => irAVista(boton.dataset.irVista, boton.dataset.irDestino));
+  }
   for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
@@ -1133,6 +1176,8 @@ function renderEquipo(cont, ids) {
       ["seccion-entretiempo", "Entretiempo"],
       ...(horarios ? [["seccion-horarios", "Horarios"]] : []),
       ["seccion-datos-equipo", "Datos del equipo"],
+      ["seccion-rachas", "Rachas"],
+      ["seccion-curiosos", "Datos curiosos"],
       ["seccion-graficos-equipo", "Goles"],
     ])}
     <div class="paneles">
@@ -1141,11 +1186,19 @@ function renderEquipo(cont, ids) {
         ${horarios}
       </div>
       ${panelDatosEquipo(ids)}
+      <div class="resumen__par">
+        ${renderRachasHistoricas(ids, resumenEquipo(estado.data, ids).racha)}
+        ${renderDatosCuriosos(ids)}
+      </div>
       ${panel("Goles", "Cómo evolucionaron los goles a favor y en contra, de dónde vinieron y en qué momento del partido se convirtieron.",
         `<div id="graficos-equipo-contenido" class="graficos"></div>`, { id: "seccion-graficos-equipo" })}
     </div>
   `;
   activarScrollASecciones(cont);
+  for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
+    boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
+  }
+  for (const boton of cont.querySelectorAll("[data-ir-partidos]")) boton.addEventListener("click", irAPartidos);
   renderGraficosEquipoContenido(cont.querySelector("#graficos-equipo-contenido"), ids);
 }
 
@@ -1156,11 +1209,11 @@ function renderEquipo(cont, ids) {
 // (se usa poco: casi nunca se repite rival), la vista es larga.
 
 function renderPartidosVista(cont, ids) {
-  const hayTorneos = torneosVisibles(estado.data, estado.filtros.competencia).length > 0;
+  const hayTorneos = torneosVisibles(estado.data, undefined).length > 0;
   cont.innerHTML = `
     ${renderSubnav([
       ["seccion-ultimo-proximo", "Último y próximo"],
-      ...(hayTorneos ? [["seccion-torneos", "Torneos"]] : []),
+      ...(hayTorneos ? [["seccion-torneos", "Tablas"]] : []),
       ["seccion-partidos", "Partidos"],
       ["seccion-historial-rivales", "Historial vs rivales"],
     ])}
@@ -1170,7 +1223,7 @@ function renderPartidosVista(cont, ids) {
         ${renderProximoPartido()}
       </div>
       ${renderTorneos()}
-      ${panel("Partidos", "El historial completo, partido por partido. Tocá uno para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
+      ${panel("Partidos", "Todos los partidos: tocá la miniatura para verlo acá mismo, o el título para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
       ${panel("Historial vs rivales", "El acumulado contra cada rival: partidos jugados, resultados y goles.",
         `<div id="historial-rivales-contenido"></div>`, { id: "seccion-historial-rivales" })}
     </div>
@@ -1183,17 +1236,6 @@ function renderPartidosVista(cont, ids) {
   });
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
   renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
-
-  // "Ver nuestros partidos" de un torneo: lo deja como competencia filtrada y
-  // baja a la lista de partidos, que ya respeta ese filtro.
-  for (const boton of cont.querySelectorAll("[data-ver-partidos-torneo]")) {
-    boton.addEventListener("click", () => {
-      estado.filtros.competencia = boton.dataset.verPartidosTorneo;
-      construirControlesFiltro();
-      onFiltrosCambiaron();
-      document.getElementById("seccion-partidos")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
 }
 
 // ---------------- torneos: tabla de posiciones de cada competencia ----------------
@@ -1209,7 +1251,7 @@ const COLUMNAS_TORNEO = [
 // Un solo panel con selector de torneo (por defecto el más nuevo, que es el
 // primero de data.torneos), en vez de una tabla por torneo siempre desplegada.
 function renderTorneos() {
-  const visibles = torneosVisibles(estado.data, estado.filtros.competencia);
+  const visibles = torneosVisibles(estado.data, undefined);
   if (visibles.length === 0) return "";
   const torneo = visibles.find((t) => t.competencia === estado.torneoElegido) ?? visibles[0];
   const selector = visibles.length > 1 ? `
@@ -1243,10 +1285,9 @@ function panelTorneo(torneo, selector = "") {
     </div>
     <div class="torneo__pie">
       <span>Tabla al ${fmtFechaISO(torneo.actualizado)} · Fuente: North Champ</span>
-      ${r ? `<button type="button" class="enlace" data-ver-partidos-torneo="${torneo.competencia}">Ver nuestros partidos →</button>` : ""}
     </div>
   `;
-  return panel(`Torneo: ${torneo.competencia} <small>Zona ${torneo.categoria}</small>`, resumen, cuerpo, { id: "seccion-torneos" });
+  return panel(`Tabla: ${torneo.competencia} <small>Zona ${torneo.categoria}</small>`, resumen, cuerpo, { id: "seccion-torneos" });
 }
 
 // una fila por rival enfrentado, no solo el más repetido (eso ya lo cubre
@@ -1293,6 +1334,32 @@ function renderHistorialRivalesContenido(cont, ids) {
   }
 }
 
+// id de un link de YouTube (youtu.be/ID, watch?v=ID, embed/ID, shorts/ID) y,
+// si trae, el segundo de inicio (?t=5s / &t=90).
+function datosYoutube(url) {
+  try {
+    const u = new URL(url);
+    let id = null;
+    if (u.hostname === "youtu.be") id = u.pathname.slice(1);
+    else if (u.hostname.endsWith("youtube.com")) id = u.searchParams.get("v") || u.pathname.split("/").filter(Boolean).pop();
+    if (!id || !/^[\w-]{11}$/.test(id)) return null;
+    const t = parseInt(u.searchParams.get("t") || u.searchParams.get("start") || "0", 10) || 0;
+    return { id, t };
+  } catch {
+    return null;
+  }
+}
+
+function renderMediaPartido(p) {
+  const yt = p.link_video && datosYoutube(p.link_video);
+  if (!yt) return "";
+  return `
+    <button type="button" class="partido-media" data-yt="${yt.id}" data-t="${yt.t}" aria-label="Reproducir video: ${fmtFechaISO(p.fecha)} vs ${p.rival}">
+      <img src="https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg" alt="" loading="lazy" width="480" height="360">
+      <span class="partido-media-play" aria-hidden="true">▶</span>
+    </button>`;
+}
+
 function renderPartidosContenido(cont, ids) {
   const partidos = partidosConDetalle(estado.data, ids).sort((a, b) => b.fecha.localeCompare(a.fecha));
   if (partidos.length === 0) {
@@ -1304,6 +1371,7 @@ function renderPartidosContenido(cont, ids) {
   cont.innerHTML = partidos
     .map((p, i) => `
       <div class="partido">
+        ${renderMediaPartido(p)}
         <button type="button" class="partido-resumen" aria-expanded="false" data-idx="${i}">
           <span>${fmtFechaISO(p.fecha)} · ${p.tipo} vs ${p.rival}</span>
           <span>
@@ -1312,7 +1380,7 @@ function renderPartidosContenido(cont, ids) {
           </span>
         </button>
         <div class="partido-detalle" hidden>
-          ${p.link_video ? `<p><a href="${p.link_video}" target="_blank" rel="noopener">Ver video</a></p>` : ""}
+          ${p.link_video ? `<p><a href="${p.link_video}" target="_blank" rel="noopener">Abrir en YouTube</a></p>` : ""}
           <h4>Alineación</h4>
           <ul>${p.alineacion.map((a) => `<li>${nombrePorId.get(a.id_jugador) ?? a.id_jugador}${a.amarillas ? " 🟨" : ""}${a.rojas ? " 🟥" : ""}</li>`).join("") || "<li>Sin datos</li>"}</ul>
           <h4>Goles</h4>
@@ -1321,6 +1389,20 @@ function renderPartidosContenido(cont, ids) {
       </div>
     `)
     .join("");
+
+  // la miniatura se reemplaza por el reproductor (sin cargar nada de YouTube
+  // hasta que se toca: la página sigue liviana).
+  for (const media of cont.querySelectorAll(".partido-media")) {
+    media.addEventListener("click", () => {
+      const iframe = document.createElement("iframe");
+      iframe.className = "partido-media";
+      iframe.src = `https://www.youtube-nocookie.com/embed/${media.dataset.yt}?autoplay=1&rel=0&start=${media.dataset.t}`;
+      iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      iframe.allowFullscreen = true;
+      iframe.title = media.getAttribute("aria-label");
+      media.replaceWith(iframe);
+    });
+  }
 
   for (const boton of cont.querySelectorAll(".partido-resumen")) {
     boton.addEventListener("click", () => {
@@ -1669,10 +1751,9 @@ function renderDuosContenido(cont, ids) {
 }
 
 function renderFooter() {
-  const footer = document.querySelector("footer.app-footer");
   const { meta } = estado.data;
   const fecha = new Date(meta.generated_at).toLocaleString("es-AR");
-  footer.innerHTML = `Datos generados el ${fecha} · ${meta.warnings.length} aviso(s) de calidad de datos`;
+  document.getElementById("footer-datos").textContent = `Datos generados el ${fecha} · ${meta.warnings.length} aviso(s) de calidad de datos`;
 }
 
 init();
