@@ -676,10 +676,16 @@ function renderInicio(cont, ids) {
           `<div id="partidos-contenido"></div>
            ${total > PARTIDOS_INICIO ? `<button type="button" class="ver-mas" id="ver-todos-partidos">${estado.inicioPartidosTodos ? "Ver menos" : `Ver todos los partidos (${total})`}</button>` : ""}`,
           { id: "seccion-partidos-video" })}
-        ${r.pj === 0 ? "" : renderJugadoresDestacados(ids)}
       </div>
     </div>
   `;
+  // en el celular el análisis del rival arranca plegado (ver CSS de .proximo__detalle)
+  const toggleProximo = cont.querySelector(".proximo__toggle");
+  toggleProximo?.addEventListener("click", () => {
+    const abierto = toggleProximo.closest(".panel").classList.toggle("panel--proximo-abierto");
+    toggleProximo.setAttribute("aria-expanded", String(abierto));
+    toggleProximo.textContent = abierto ? "Ocultar análisis" : "Ver análisis completo";
+  });
   renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids, estado.inicioPartidosTodos ? undefined : PARTIDOS_INICIO);
   cont.querySelector("#ver-todos-partidos")?.addEventListener("click", () => {
     estado.inicioPartidosTodos = !estado.inicioPartidosTodos;
@@ -691,9 +697,6 @@ function renderInicio(cont, ids) {
   }
   for (const boton of cont.querySelectorAll("[data-ir-vista]")) {
     boton.addEventListener("click", () => irAVista(boton.dataset.irVista, boton.dataset.irDestino));
-  }
-  for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
-    boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
 }
 
@@ -828,15 +831,19 @@ function renderProximoPartido() {
       <strong class="proximo__nombre">${proximo.rival}</strong>
       ${a.forma.length ? `<span class="proximo__forma">Su forma ${puntosForma(a.forma)}</span>` : ""}
     </div>
-    <div class="proximo__cols">
-      <div>
-        ${items ? `<ul class="analisis">${items}</ul>` : ""}
-        ${a.conclusion ? `<p class="analisis__conclusion">${a.conclusion}</p>` : ""}
-        ${antecedentes}
+    ${a.conclusion ? `<p class="analisis__conclusion analisis__conclusion--resumen">${a.conclusion}</p>` : ""}
+    <button type="button" class="enlace proximo__toggle" aria-expanded="false" aria-controls="proximo-detalle">Ver análisis completo</button>
+    <div class="proximo__detalle" id="proximo-detalle">
+      <div class="proximo__cols">
+        <div>
+          ${items ? `<ul class="analisis">${items}</ul>` : ""}
+          ${a.conclusion ? `<p class="analisis__conclusion analisis__conclusion--completa">${a.conclusion}</p>` : ""}
+          ${antecedentes}
+        </div>
+        ${renderResultadosDelRival(proximo)}
       </div>
-      ${renderResultadosDelRival(proximo)}
+      <p class="analisis__nota">Análisis automático con los resultados del torneo${a.aviso ? `. ${a.aviso}` : "."} Datos al ${fmtFechaISO(torneo.actualizado)}.</p>
     </div>
-    <p class="analisis__nota">Análisis automático con los resultados del torneo${a.aviso ? `. ${a.aviso}` : "."} Datos al ${fmtFechaISO(torneo.actualizado)}.</p>
   `;
   return panel("Próximo partido", detalle, cuerpo, { clase: "panel--proximo" });
 }
@@ -942,75 +949,57 @@ function filaRacha(etiqueta, racha, tono) {
 // jugadoresDestacados() para el 1ro): así el líder y el podio comparten el
 // mismo criterio de desempate, en vez de tener dos lógicas que podrían
 // discrepar en un caso de empate.
-const CATEGORIAS_DESTACADOS = [
-  ["g", "Máximo goleador", "goles"],
-  ["a", "Máximo asistidor", "asistencias"],
-  ["ga", "Más influyente", "G+A"],
-  ["pj", "Más partidos jugados", "PJ"],
+// Tres grupos para no perderse entre los 6 podios; cada podio muestra su grupo
+// arriba, y lleva ícono, nombre y una aclaración de qué cuenta. [clave de tablaJugadores, ícono, nombre, unidad]
+const GRUPOS_DESTACADOS = [
+  ["Ataque", [
+    ["g", "⚽", "Goleadores", "goles"],
+    ["a", "🅰️", "Asistidores", "pases de gol"],
+    ["ga", "⭐", "Más influyentes", "goles + asistencias"],
+  ]],
+  ["Presencia", [
+    ["pj", "👕", "Más partidos jugados", "partidos"],
+  ]],
+  ["Disciplina", [
+    ["ta", "🟨", "Más amarillas", "tarjetas"],
+    ["tr", "🟥", "Más rojas", "tarjetas"],
+  ]],
 ];
 
-// "Resumen" tiene que ser un resumen de verdad: no solo números del equipo,
-// también quién se destaca individualmente (pedido de la usuaria), ahora con
-// 2do y 3er puesto además del líder (más "competencia entre amigos" que
-// mostrar solo a uno). Un valor en 0 no cuenta como "destacado".
 function renderJugadoresDestacados(ids) {
-  const podios = CATEGORIAS_DESTACADOS.map(([clave, etiqueta, unidad]) => [
-    etiqueta, unidad, topJugadoresPorCategoria(estado.data, ids, clave, 5),
-  ]);
-  const racha = jugadorEnRacha(estado.data, ids);
-  if (podios.every(([, , top]) => top.length === 0) && !racha) return "";
+  const podios = GRUPOS_DESTACADOS.flatMap(([grupo, categorias]) => categorias.map(([clave, icono, etiqueta, unidad]) =>
+    [grupo, icono, etiqueta, unidad, topJugadoresPorCategoria(estado.data, ids, clave, 5)]))
+    .filter(([, , , , top]) => top.length > 0);
+  if (podios.length === 0) return "";
   return panel(
     "Jugadores destacados",
-    "Quién lidera cada estadística: el podio y, abajo, quiénes vienen detrás (4.º y 5.º). Tocá un jugador para ver su ficha.",
-    `<div class="podios">${podios.map(([etiqueta, unidad, top]) => podio(etiqueta, unidad, top)).join("")}</div>${filaJugadorEnRacha(racha)}`,
+    "Quién lidera cada estadística: los 5 primeros, con el podio arriba. Tocá un jugador para ver su ficha.",
+    `<div class="podios">${podios.map(([grupo, icono, etiqueta, unidad, top]) => podio(grupo, icono, etiqueta, unidad, top)).join("")}</div>`,
     { id: "seccion-destacados" },
   );
 }
 
-// "Sebastian Orlando" -> "Sebastian O.": la fila del 4.º/5.º comparte el ancho
-// de una columna entre dos jugadores, el nombre completo no entra. Si el
-// segundo término no es un apellido ("Tomas (fabrica)", 'Simon "Chama"
-// Ortelli') queda solo el primer nombre. El completo va en el title.
-function nombreCorto(nombre) {
-  const [primero, segundo] = nombre.split(" ");
-  return segundo && /^\p{L}/u.test(segundo) ? `${primero} ${segundo[0]}.` : primero;
-}
-
-// una columna por categoría: el podio (top 3, con medallas, el 1.º resaltado
-// por CSS) y, en una sola fila chica debajo, el 4.º y 5.º para ver quién se
-// está acercando a las medallas (pedido de la usuaria).
-function podio(etiqueta, unidad, top) {
+// una columna por categoría: los 5 primeros, uno por fila. Medallas para el
+// podio (el 1.º resaltado por CSS) y la posición (4.º, 5.º) para los que
+// vienen detrás.
+function podio(grupo, icono, etiqueta, unidad, top) {
   const medallas = ["🥇", "🥈", "🥉"];
   const filas = top.length === 0
     ? `<li class="podio__vacio">–</li>`
-    : top.slice(0, 3).map((j, i) => `
+    : top.slice(0, 5).map((j, i) => `
       <li>
         <button type="button" class="podio__fila" data-jugador-id="${j.idJugador}">
-          <span class="podio__medalla" aria-hidden="true">${medallas[i] ?? "•"}</span>
+          <span class="podio__medalla${i >= 3 ? " podio__medalla--pos" : ""}" aria-hidden="true">${medallas[i] ?? `${i + 1}º`}</span>
           <span class="podio__nombre">${avatarHTML(j.nombre)}<span class="podio__nombre-texto">${j.nombre}</span></span>
           <span class="podio__valor">${j.valor}</span>
         </button>
       </li>`).join("");
-  const cerca = top.slice(3, 5).map((j, i) => `
-    <button type="button" class="podio__cerca-item" data-jugador-id="${j.idJugador}" title="${j.nombre}">
-      <span class="podio__pos">${i + 4}º</span>
-      <span class="podio__cerca-nombre">${nombreCorto(j.nombre)}</span>
-      <span class="podio__valor">${j.valor}</span>
-    </button>`).join("");
   return `
     <div class="podio">
-      <h3 class="podio__titulo">${etiqueta} <small>${unidad}</small></h3>
+      <p class="podio__grupo">${grupo}</p>
+      <h4 class="podio__titulo"><span aria-hidden="true">${icono}</span> ${etiqueta} <small>${unidad}</small></h4>
       <ol class="podio__lista">${filas}</ol>
-      ${cerca ? `<div class="podio__cerca">${cerca}</div>` : ""}
     </div>`;
-}
-
-// jugador con la racha goleadora ACTUAL más larga (ver jugadorEnRacha() en
-// stats.js): sin placeholder "–" si no aplica — con pocos partidos cargados es
-// normal que todavía nadie esté en racha.
-function filaJugadorEnRacha(racha) {
-  if (!racha) return "";
-  return `<div class="filas filas--pie">${filaJugador("🔥 Jugador en racha", `${racha.cantidad} partidos seguidos convirtiendo`, racha)}</div>`;
 }
 
 // "Datos curiosos": coincidencias que salen de cruzar los datos entre sí
@@ -1058,6 +1047,10 @@ function renderDatosCuriosos(ids, nivel = "equipo") {
     if (dj.masAsistenciasUnPartido) {
       const m = dj.masAsistenciasUnPartido;
       grupos.bueno.push(filaCuriosidadJugador("Más asistencias en un partido", m, `${m.valor} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`));
+    }
+    const enRacha = jugadorEnRacha(estado.data, ids);
+    if (enRacha) {
+      grupos.bueno.push(filaCuriosidadJugador("🔥 Jugador en racha", enRacha, `${enRacha.cantidad} partidos seguidos convirtiendo`));
     }
     if (dj.rachaGoleadora) {
       const m = dj.rachaGoleadora;
@@ -1524,19 +1517,15 @@ function renderGraficosEquipoContenido(cont, ids) {
 function renderJugadores(cont, ids) {
   cont.innerHTML = `
     ${renderSubnav([
-      ["seccion-tabla-jugadores", "Estadísticas"],
+      ["seccion-destacados", "Destacados"],
       ["seccion-curiosos-jugadores", "Datos curiosos"],
       ["seccion-duos", "Dúos"],
       ["seccion-comparar", "Comparar"],
       ["seccion-ficha", "Ficha"],
+      ["seccion-tabla-jugadores", "Estadísticas"],
     ])}
     <div class="paneles">
-      ${panel("Estadísticas de los jugadores", "Lo acumulado de cada jugador. Tocá un encabezado para ordenar, o un nombre para ver su ficha.",
-        `<div id="tabla-jugadores-contenido"></div>
-         <div class="bloque-extra">
-           <h3 class="subpanel__titulo">Ranking de goleadores y de goles + asistencias</h3>
-           <div id="graficos-jugadores-contenido"></div>
-         </div>`, { id: "seccion-tabla-jugadores" })}
+      ${renderJugadoresDestacados(ids)}
       ${renderDatosCuriosos(ids, "jugador")}
       ${panel("Dúos asistidor → goleador", "Qué combinaciones de pase y definición se repitieron más.",
         `<div id="duos-contenido"></div>`, { id: "seccion-duos" })}
@@ -1544,10 +1533,16 @@ function renderJugadores(cont, ids) {
         `<div id="comparar-selector"></div><div id="comparar-contenido"></div>`, { id: "seccion-comparar" })}
       ${panel("Ficha de jugador", "Elegí un jugador para ver su carta de stats, logros y sus goles y asistencias partido por partido.",
         `<div id="ficha-selector"></div><div id="ficha-contenido"></div>`, { id: "seccion-ficha" })}
+      ${panel("Estadísticas de los jugadores", "La tabla completa, con todas las columnas, y el ranking de goleadores. Tocá un encabezado para ordenar, o un nombre para ver su ficha.",
+        `<div id="tabla-jugadores-contenido"></div>
+         <div class="bloque-extra">
+           <h3 class="subpanel__titulo">Ranking de goleadores y de goles + asistencias</h3>
+           <div id="graficos-jugadores-contenido"></div>
+         </div>`, { id: "seccion-tabla-jugadores" })}
     </div>
   `;
   activarScrollASecciones(cont);
-  for (const boton of cont.querySelectorAll("#seccion-curiosos-jugadores [data-jugador-id]")) {
+  for (const boton of cont.querySelectorAll("#seccion-destacados [data-jugador-id], #seccion-curiosos-jugadores [data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
   renderTablaJugadoresContenido(cont.querySelector("#tabla-jugadores-contenido"), ids);

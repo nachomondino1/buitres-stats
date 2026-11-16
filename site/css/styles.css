@@ -1060,15 +1060,32 @@ main {
 
 .podios {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: 1rem 2rem;
+  grid-template-columns: 1fr;
+  gap: 1.5rem 2rem;
+}
+
+@media (min-width: 480px) {
+  .podios { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 720px) {
+  .podios { grid-template-columns: repeat(3, 1fr); }
+}
+
+.podio__grupo {
+  margin: 0 0 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
 }
 
 .podio__titulo {
   margin: 0 0 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-texto-tenue);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-texto);
 }
 
 .podio__lista {
@@ -1122,6 +1139,7 @@ main {
 }
 
 .podio__titulo small {
+  display: block;
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--color-texto-suave);
@@ -1132,54 +1150,11 @@ main {
   font-weight: 700;
 }
 
-/* 4.º y 5.º: una sola fila chica y tenue debajo del podio */
-.podio__cerca {
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.2rem -0.4rem 0;
-  padding-top: 0.3rem;
-  border-top: 1px solid var(--color-borde-suave);
-}
-
-.podio__cerca-item {
-  display: flex;
-  flex: 1 1 0;
-  align-items: baseline;
-  gap: 0.3rem;
-  min-width: 0;
-  padding: 0.25rem 0.4rem;
-  border: none;
-  border-radius: var(--radio-sm);
-  background: none;
-  font: inherit;
+/* 4.º y 5.º: posición en vez de medalla, un poco más tenues */
+.podio__medalla--pos {
+  min-width: 1.1em;
   font-size: 0.75rem;
-  color: var(--color-texto-tenue);
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.podio__cerca-item:hover {
-  background: var(--color-bg-sutil);
-  color: var(--color-texto);
-}
-
-.podio__pos {
-  flex: none;
   color: var(--color-texto-suave);
-}
-
-.podio__cerca-nombre {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.podio__cerca-item .podio__valor {
-  flex: none;
-  color: var(--color-texto);
 }
 
 .podio__vacio {
@@ -2173,5 +2148,37 @@ main.main--inicio {
   .inicio-hero__texto {
     justify-content: center;
     max-width: 34rem;
+  }
+}
+
+/* Próximo partido: en el celular arranca plegado (rival, forma y la conclusión);
+   "Ver análisis completo" despliega los puntos, los antecedentes y a quién le
+   ganó / con quién perdió. En pantallas grandes se ve todo siempre. */
+.proximo__toggle {
+  display: none;
+}
+
+.analisis__conclusion--resumen {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .analisis__conclusion--resumen {
+    display: block;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .analisis__conclusion--completa {
+    display: none;
+  }
+  .proximo__toggle {
+    display: inline-block;
+    margin-top: 0.25rem;
+  }
+  .proximo__detalle {
+    display: none;
+  }
+  .panel--proximo-abierto .proximo__detalle {
+    display: block;
+    margin-top: 1rem;
   }
 }
