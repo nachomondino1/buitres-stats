@@ -2149,3 +2149,29 @@ main.main--inicio {
   padding-top: 1.25rem;
   border-top: 1px solid var(--color-borde-suave);
 }
+
+/* pantalla horizontal: la foto va a la derecha (se funde con el fondo oscuro
+   hacia la izquierda) y el título con los botones quedan centrados
+   verticalmente en el lado izquierdo. En vertical se mantiene el layout de
+   arriba (foto entera sobre copia borrosa, texto arriba). */
+@media (orientation: landscape) and (min-width: 700px) {
+  .inicio-hero {
+    background-image: none;
+    background-color: #0b1a12;
+  }
+  .inicio-hero img {
+    left: auto;
+    right: 0;
+    width: 70%;
+    object-position: center 45%;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 28%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 28%);
+  }
+  .inicio-hero::after {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.35) 100%);
+  }
+  .inicio-hero__texto {
+    justify-content: center;
+    max-width: 34rem;
+  }
+}
