@@ -56,14 +56,10 @@
           </button>
         </h1>
         <nav class="tabs" role="tablist" aria-label="Vistas"></nav>
-        <div class="app-header-acciones">
-          <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar tema">🌓</button>
-          <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
-        </div>
       </div>
     </header>
 
-    <div class="filtros" aria-label="Filtros"></div>
+    <div class="filtros" aria-label="Filtros" hidden></div>
   </div>
 
   <main>
@@ -83,7 +79,13 @@
     <p class="estado-carga visually-hidden">Cargando datos…</p>
   </main>
 
-  <footer class="app-footer"></footer>
+  <footer class="app-footer">
+    <div class="app-footer-acciones">
+      <button type="button" class="boton-compartir" id="boton-compartir">Compartir</button>
+      <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar tema">🌓</button>
+    </div>
+    <p id="footer-datos"></p>
+  </footer>
 
   <script src="vendor/chart.min.js" defer></script>
   <script type="module" src="js/ui.js"></script>
