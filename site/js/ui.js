@@ -3,6 +3,7 @@
 import {
   compararJugadores,
   datosCuriosos,
+  datosCuriososJugadores,
   duosAsistidorGoleador,
   evolucionGfGc,
   fichaJugador,
@@ -96,6 +97,7 @@ const estado = {
     rivales: { columna: "pj", direccion: "desc" },
   },
   jugadorFichaId: null,
+  inicioPartidosTodos: false, // Inicio muestra los últimos partidos; "Ver todos" los expande
   // tabla de jugadores: arranca mostrando solo los primeros JUGADORES_VISIBLES
   // (según el orden activo); "Ver todos" la expande. A propósito NO vive en
   // la URL: es una preferencia de visualización, como el comparador.
@@ -113,10 +115,13 @@ const estado = {
 // de la usuaria).
 const VISTAS = ["inicio", "partidos", "equipo", "jugadores"];
 
-// los filtros globales solo tienen sentido donde hay agregados que filtrar:
-// Inicio y Partidos siempre muestran todo (la portada solo resume lo que ya
-// está en las otras vistas, sin datos propios).
-const VISTAS_CON_FILTROS = ["equipo", "jugadores"];
+// los filtros globales solo tienen sentido donde hay agregados que filtrar
+// (resultados, tablas, equipo, jugadores). Inicio siempre muestra todo: es la
+// portada y solo resume lo que ya está en las otras vistas.
+const VISTAS_CON_FILTROS = ["partidos", "equipo", "jugadores"];
+
+// "Inicio" no es una pestaña: se llega con el logo/título.
+const TABS = VISTAS.filter((v) => v !== "inicio");
 
 const JUGADORES_VISIBLES = 10;
 
@@ -500,7 +505,7 @@ const ETIQUETA_VISTA = {
 
 function construirTabs() {
   const nav = document.querySelector("nav.tabs");
-  nav.innerHTML = VISTAS.map(
+  nav.innerHTML = TABS.map(
     (v) => `<button type="button" role="tab" id="tab-${v}" aria-controls="panel-${v}" data-vista="${v}">${ETIQUETA_VISTA[v]}</button>`
   ).join("");
   for (const boton of nav.querySelectorAll("button")) {
@@ -520,6 +525,14 @@ function marcarTabActiva() {
 
 // ---------------- render por vista ----------------
 
+// el hero de Inicio ocupa el alto de la pantalla menos la barra de arriba
+// (que cambia de alto según el ancho y si hay filtros): se mide y se pasa a CSS.
+function medirAltoBarra() {
+  const barra = document.querySelector(".app-top");
+  document.documentElement.style.setProperty("--alto-app-top", `${barra.offsetHeight}px`);
+}
+window.addEventListener("resize", () => medirAltoBarra());
+
 function renderVistaActual() {
   marcarTabActiva();
   const main = document.querySelector("main");
@@ -528,7 +541,10 @@ function renderVistaActual() {
   const ids = conFiltros ? idsFiltrados() : filtrarPartidos(estado.data, {});
 
   const renderers = { inicio: renderInicio, partidos: renderPartidosVista, equipo: renderEquipo, jugadores: renderJugadores };
-  main.innerHTML = `<section role="tabpanel" id="panel-${estado.vista}" aria-labelledby="tab-${estado.vista}"></section>`;
+  main.classList.toggle("main--inicio", estado.vista === "inicio");
+  const etiquetado = estado.vista === "inicio" ? 'aria-label="Inicio"' : `aria-labelledby="tab-${estado.vista}"`;
+  main.innerHTML = `<section role="tabpanel" id="panel-${estado.vista}" ${etiquetado}></section>`;
+  medirAltoBarra();
   renderers[estado.vista](main.querySelector("section"), ids);
 }
 
@@ -536,7 +552,7 @@ function renderVistaActual() {
 // directo a una sin tener que scrollear a mano (las vistas se alargaron al
 // agrupar temas que antes eran pestañas separadas).
 const ICONO_SECCION = {
-  "seccion-resultados": "📊", "seccion-destacados": "⭐", "seccion-rachas": "🔥", "seccion-curiosos": "💡",
+  "seccion-resultados": "📊", "seccion-destacados": "⭐", "seccion-rachas": "🔥", "seccion-curiosos": "💡", "seccion-curiosos-jugadores": "💡",
   "seccion-entretiempo": "⏱️", "seccion-horarios": "🕒", "seccion-datos-equipo": "🛡️", "seccion-graficos-equipo": "⚽",
   "seccion-ultimo-proximo": "📅", "seccion-torneos": "🏆", "seccion-partidos": "🎬", "seccion-historial-rivales": "🆚",
   "seccion-tabla-jugadores": "📋", "seccion-graficos-jugadores": "📈", "seccion-duos": "🤝", "seccion-comparar": "⚖️", "seccion-ficha": "🪪",
@@ -593,18 +609,18 @@ function irAVista(vista, destino) {
   else window.scrollTo({ top: 0 });
 }
 
+const PARTIDOS_INICIO = 6;
+
 function renderInicio(cont, ids) {
   const r = resumenEquipo(estado.data, ids);
-  const forma = ultimosResultados(estado.data, ids, 5);
+  const total = estado.data.partidos.length;
   const conVideo = estado.data.partidos.filter((p) => p.link_video).length;
   const cards = [
-    ["partidos", "🎬", "Partidos", "Mirá cada partido en video, con alineación, goles y las tablas de los torneos.",
-      `${r.pj} partidos · ${conVideo} con video`],
-    ["equipo", "🛡️", "Equipo", "Rachas, récords, cómo arrancamos y cerramos los partidos, y de dónde vienen los goles.",
-      `${r.g} ganados · ${r.e} empatados · ${r.p} perdidos`],
-    ["jugadores", "👥", "Jugadores", "La tabla de cada uno, su ficha, los dúos que más gol hacen y un comparador.",
-      `${estado.data.jugadores.length} jugadores`],
+    ["partidos", "⚽", "Partidos", "Filtrá los resultados, mirá las tablas de los torneos y el historial contra cada rival."],
+    ["equipo", "🛡️", "Equipo", "Rachas, récords, cómo arrancamos y cerramos los partidos, y de dónde vienen los goles."],
+    ["jugadores", "👥", "Jugadores", "La tabla de cada uno, su ficha, los dúos que más gol hacen y un comparador."],
   ];
+  const verTodos = estado.inicioPartidosTodos;
   cont.innerHTML = `
     <div class="inicio-hero">
       <img src="media/equipo.jpg" alt="El plantel de Los Buitres posando en la cancha" width="1400" height="1050" fetchpriority="high">
@@ -614,32 +630,54 @@ function renderInicio(cont, ids) {
           <p class="inicio-hero__sub">Todos nuestros partidos, goles y estadísticas, en un solo lugar.</p>
         </div>
         <div class="inicio-hero__botones">
-          <button type="button" class="boton-cta" data-ir-vista="partidos" data-ir-destino="seccion-partidos">▶ Ver los partidos</button>
+          <button type="button" class="boton-cta" data-scroll-a="seccion-partidos-video">▶ Ver los partidos</button>
           <button type="button" class="boton-cta boton-cta--sec" data-ir-vista="jugadores">👥 Ver jugadores</button>
         </div>
       </div>
     </div>
-    <div class="inicio-cards">
-      ${cards.map(([vista, icono, titulo, desc, dato]) => `
-        <button type="button" class="inicio-card" data-ir-vista="${vista}">
-          <span class="inicio-card__icono" aria-hidden="true">${icono}</span>
-          <span class="inicio-card__titulo">${titulo}</span>
-          <span class="inicio-card__desc">${desc}</span>
-          <span class="inicio-card__dato">${dato}</span>
-        </button>`).join("")}
-    </div>
-    <div class="paneles">
-      ${r.pj === 0 ? "" : renderHeroResumen(r, forma)}
-      ${r.pj === 0 ? "" : renderJugadoresDestacados(ids)}
+    <div class="inicio-contenido">
+      <div class="inicio-bloque">
+        <header class="panel__cabecera">
+          <h2 class="panel__titulo">Qué vas a encontrar</h2>
+          <p class="panel__desc">Tres secciones, cada una con lo suyo.</p>
+        </header>
+        <div class="inicio-cards">
+          ${cards.map(([vista, icono, titulo, desc]) => `
+            <button type="button" class="inicio-card" data-ir-vista="${vista}">
+              <span class="inicio-card__icono" aria-hidden="true">${icono}</span>
+              <span class="inicio-card__titulo">${titulo}</span>
+              <span class="inicio-card__desc">${desc}</span>
+            </button>`).join("")}
+        </div>
+      </div>
+      <div class="paneles">
+        <div class="paneles" id="seccion-ultimo-proximo">
+          ${renderTarjetaUltimoPartido()}
+          ${renderProximoPartido()}
+        </div>
+        ${panel("Partidos en video", `Tocá una miniatura para verlo acá mismo, o el título para ver alineación y goles. ${conVideo} de ${total} tienen video.`,
+          `<div id="partidos-contenido"></div>
+           ${total > PARTIDOS_INICIO ? `<button type="button" class="ver-mas" id="ver-todos-partidos">${verTodos ? "Ver menos" : `Ver todos los partidos (${total})`}</button>` : ""}`,
+          { id: "seccion-partidos-video" })}
+        ${r.pj === 0 ? "" : renderJugadoresDestacados(ids)}
+      </div>
     </div>
   `;
+  renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids, verTodos ? undefined : PARTIDOS_INICIO);
+  cont.querySelector("#ver-todos-partidos")?.addEventListener("click", () => {
+    estado.inicioPartidosTodos = !estado.inicioPartidosTodos;
+    renderVistaActual();
+    document.getElementById("seccion-partidos-video")?.scrollIntoView({ block: "start" });
+  });
+  for (const boton of cont.querySelectorAll("[data-scroll-a]")) {
+    boton.addEventListener("click", () => document.getElementById(boton.dataset.scrollA)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
   for (const boton of cont.querySelectorAll("[data-ir-vista]")) {
     boton.addEventListener("click", () => irAVista(boton.dataset.irVista, boton.dataset.irDestino));
   }
   for (const boton of cont.querySelectorAll("[data-jugador-id]")) {
     boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
   }
-  for (const boton of cont.querySelectorAll("[data-ir-partidos]")) boton.addEventListener("click", irAPartidos);
 }
 
 // Resumen = una pila de "paneles" uniformes (mismo borde, radio, cabecera en
@@ -758,7 +796,7 @@ function renderProximoPartido() {
 // "hero" de Resumen: un solo panel con lo que más importa del equipo
 // (partidos, % victorias, G/E/P en una barra proporcional), la tira de goles
 // y el último partido, en vez de 4 filas de tarjetas sueltas.
-function renderHeroResumen(r, forma) {
+function renderHeroResumen(r, forma, { conUltimo = true } = {}) {
   const u = ultimoPartido(estado.data);
   const dif = r.dif > 0 ? `+${r.dif}` : r.dif;
   const stats = [["GF", r.gf], ["GC", r.gc], ["Dif", dif], ["Prom. GF", fmtPromedio(r.promedioGf)], ["Prom. GC", fmtPromedio(r.promedioGc)]];
@@ -797,8 +835,8 @@ function renderHeroResumen(r, forma) {
     <dl class="hero__stats">
       ${stats.map(([etiqueta, valor]) => `<div class="hero__stat"><dt>${etiqueta}</dt><dd>${valor}</dd></div>`).join("")}
     </dl>
-    ${ultimo}
-    ${proximo}
+    ${conUltimo ? ultimo : ""}
+    ${conUltimo ? proximo : ""}
   `;
   const puntos = forma.length ? `<span class="hero__forma">Últimos ${forma.length} ${puntosForma(forma)}</span>` : "";
   return `
@@ -931,22 +969,25 @@ function filaJugadorEnRacha(racha) {
 // sumar columnas. Pedido de la usuaria. Cada hecho se arma solo si aplica
 // (ver datosCuriosos() en stats.js) — con pocos partidos cargados es normal
 // que algunas tarjetas no aparezcan todavía.
-function renderDatosCuriosos(ids) {
+// nivel "equipo": coincidencias y récords del equipo (Equipo); nivel "jugador":
+// las que son de una persona (Jugadores).
+function renderDatosCuriosos(ids, nivel = "equipo") {
   const d = datosCuriosos(estado.data, ids);
+  const deEquipo = nivel === "equipo";
   // cada hecho va a un grupo según si es una buena noticia, una mala o
   // simplemente una coincidencia neutra.
   const grupos = { bueno: [], malo: [], neutro: [] };
 
-  if (d.rivalRepetido) {
+  if (deEquipo && d.rivalRepetido) {
     const r = d.rivalRepetido;
     const record = [r.g && `${r.g}G`, r.e && `${r.e}E`, r.p && `${r.p}P`].filter(Boolean).join("-");
     grupos.neutro.push(filaCuriosidad("Rival más enfrentado", r.rival, `${r.pj} partidos (${record})`));
   }
-  if (d.marcadorRepetido) {
+  if (deEquipo && d.marcadorRepetido) {
     const m = d.marcadorRepetido;
     grupos.neutro.push(filaCuriosidad("Marcador que más se repitió", listaConY(m.marcadores), `${m.cantidad} veces`));
   }
-  if (d.jugadorAmuleto) {
+  if (!deEquipo && d.jugadorAmuleto) {
     const j = d.jugadorAmuleto;
     grupos.bueno.push(filaCuriosidadJugador(
       "Jugador amuleto",
@@ -954,7 +995,7 @@ function renderDatosCuriosos(ids) {
       `${fmtPorcentaje(j.pctVictorias)} de victorias del equipo en sus ${j.pj} PJ`,
     ));
   }
-  if (d.masGolesUnPartido) {
+  if (!deEquipo && d.masGolesUnPartido) {
     const m = d.masGolesUnPartido;
     grupos.bueno.push(filaCuriosidadJugador(
       "Más goles en un solo partido",
@@ -962,11 +1003,43 @@ function renderDatosCuriosos(ids) {
       `${m.cantidad} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`,
     ));
   }
-  if (d.vallaInvicta) {
+  if (!deEquipo) {
+    const dj = datosCuriososJugadores(estado.data, ids);
+    const pl2 = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+    if (dj.masAsistenciasUnPartido) {
+      const m = dj.masAsistenciasUnPartido;
+      grupos.bueno.push(filaCuriosidadJugador("Más asistencias en un partido", m, `${m.valor} · ${fmtFechaISO(m.fecha)} vs ${m.rival}`));
+    }
+    if (dj.rachaGoleadora) {
+      const m = dj.rachaGoleadora;
+      grupos.bueno.push(filaCuriosidadJugador("Mejor racha goleadora", m, `${m.valor} partidos seguidos convirtiendo (${fmtFechaISO(m.desde)} a ${fmtFechaISO(m.hasta)})`));
+    }
+    if (dj.presentismo) {
+      const m = dj.presentismo;
+      grupos.bueno.push(filaCuriosidadJugador("Presentismo", m, `${m.valor} partidos seguidos en la alineación`));
+    }
+    if (dj.masGenerosoAsistiendo) {
+      const m = dj.masGenerosoAsistiendo;
+      grupos.bueno.push(filaCuriosidadJugador("El más generoso", m, `Asistió a ${m.valor} compañeros distintos`));
+    }
+    if (dj.golALosRivales) {
+      const m = dj.golALosRivales;
+      grupos.bueno.push(filaCuriosidadJugador("Gol a todos", m, `Le hizo gol a ${m.valor} rivales distintos`));
+    }
+    if (dj.fairPlay) {
+      const m = dj.fairPlay;
+      grupos.bueno.push(filaCuriosidadJugador("Fair play", m, `${m.valor} de ${m.pj} partidos sin tarjetas`));
+    }
+    if (dj.masAmarillas) {
+      const m = dj.masAmarillas;
+      grupos.malo.push(filaCuriosidadJugador("El más amonestado", m, `${pl2(m.valor, "amarilla", "amarillas")}`));
+    }
+  }
+  if (deEquipo && d.vallaInvicta) {
     const v = d.vallaInvicta;
     grupos.bueno.push(filaCuriosidad("Vallas invictas", v.cantidad, `${fmtPorcentaje(v.pct)} de los partidos sin recibir goles`, "bueno"));
   }
-  if (d.partidoMasDesparejo) {
+  if (deEquipo && d.partidoMasDesparejo) {
     const p = d.partidoMasDesparejo;
     grupos[p.aFavor ? "bueno" : "malo"].push(filaCuriosidad(
       p.aFavor ? "Goleada más contundente" : "Peor derrota",
@@ -979,11 +1052,16 @@ function renderDatosCuriosos(ids) {
   if (grupos.bueno.length + grupos.malo.length + grupos.neutro.length === 0) return "";
   return panel(
     "Datos curiosos",
-    "Coincidencias y récords que salen de cruzar los datos entre sí.",
-    grupoFilas("Lo bueno", "bueno", grupos.bueno) +
-      grupoFilas("Lo no tan bueno", "malo", grupos.malo) +
-      grupoFilas("Curiosidades", "neutro", grupos.neutro),
-    { id: "seccion-curiosos" },
+    deEquipo ? "Coincidencias y récords del equipo que salen de cruzar los datos entre sí."
+      : "Lo que se destaca de cada jugador al cruzar los datos entre sí. Tocá uno para ver su ficha.",
+    // en Jugadores hay una sola fila "no tan buena": separar en grupos no
+    // aporta, va todo en una lista corrida
+    deEquipo
+      ? grupoFilas("Lo bueno", "bueno", grupos.bueno) +
+        grupoFilas("Lo no tan bueno", "malo", grupos.malo) +
+        grupoFilas("Curiosidades", "neutro", grupos.neutro)
+      : `<section class="grupo"><div class="filas">${[...grupos.bueno, ...grupos.neutro, ...grupos.malo].join("")}</div></section>`,
+    { id: deEquipo ? "seccion-curiosos" : "seccion-curiosos-jugadores" },
   );
 }
 
@@ -1209,21 +1287,21 @@ function renderEquipo(cont, ids) {
 // (se usa poco: casi nunca se repite rival), la vista es larga.
 
 function renderPartidosVista(cont, ids) {
-  const hayTorneos = torneosVisibles(estado.data, undefined).length > 0;
+  if (ids.size === 0) {
+    cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
+    return;
+  }
+  const r = resumenEquipo(estado.data, ids);
+  const hayTorneos = torneosVisibles(estado.data, estado.filtros.competencia).length > 0;
   cont.innerHTML = `
     ${renderSubnav([
-      ["seccion-ultimo-proximo", "Último y próximo"],
+      ["seccion-resultados", "Resultados"],
       ...(hayTorneos ? [["seccion-torneos", "Tablas"]] : []),
-      ["seccion-partidos", "Partidos"],
       ["seccion-historial-rivales", "Historial vs rivales"],
     ])}
     <div class="paneles">
-      <div class="paneles" id="seccion-ultimo-proximo">
-        ${renderTarjetaUltimoPartido()}
-        ${renderProximoPartido()}
-      </div>
+      ${renderHeroResumen(r, ultimosResultados(estado.data, ids, 5), { conUltimo: false })}
       ${renderTorneos()}
-      ${panel("Partidos", "Todos los partidos: tocá la miniatura para verlo acá mismo, o el título para ver alineación y goles.", `<div id="partidos-contenido"></div>`, { id: "seccion-partidos" })}
       ${panel("Historial vs rivales", "El acumulado contra cada rival: partidos jugados, resultados y goles.",
         `<div id="historial-rivales-contenido"></div>`, { id: "seccion-historial-rivales" })}
     </div>
@@ -1234,7 +1312,6 @@ function renderPartidosVista(cont, ids) {
     renderVistaActual();
     document.getElementById("seccion-torneos")?.scrollIntoView({ block: "nearest" });
   });
-  renderPartidosContenido(cont.querySelector("#partidos-contenido"), ids);
   renderHistorialRivalesContenido(cont.querySelector("#historial-rivales-contenido"), ids);
 }
 
@@ -1251,7 +1328,7 @@ const COLUMNAS_TORNEO = [
 // Un solo panel con selector de torneo (por defecto el más nuevo, que es el
 // primero de data.torneos), en vez de una tabla por torneo siempre desplegada.
 function renderTorneos() {
-  const visibles = torneosVisibles(estado.data, undefined);
+  const visibles = torneosVisibles(estado.data, estado.filtros.competencia);
   if (visibles.length === 0) return "";
   const torneo = visibles.find((t) => t.competencia === estado.torneoElegido) ?? visibles[0];
   const selector = visibles.length > 1 ? `
@@ -1360,8 +1437,8 @@ function renderMediaPartido(p) {
     </button>`;
 }
 
-function renderPartidosContenido(cont, ids) {
-  const partidos = partidosConDetalle(estado.data, ids).sort((a, b) => b.fecha.localeCompare(a.fecha));
+function renderPartidosContenido(cont, ids, limite) {
+  const partidos = partidosConDetalle(estado.data, ids).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, limite);
   if (partidos.length === 0) {
     cont.innerHTML = '<p class="estado-vacio">No hay partidos para estos filtros.</p>';
     return;
@@ -1436,6 +1513,7 @@ function renderJugadores(cont, ids) {
     ${renderSubnav([
       ["seccion-tabla-jugadores", "Tabla"],
       ["seccion-graficos-jugadores", "Gráficos"],
+      ["seccion-curiosos-jugadores", "Datos curiosos"],
       ["seccion-duos", "Dúos"],
       ["seccion-comparar", "Comparar"],
       ["seccion-ficha", "Ficha"],
@@ -1445,6 +1523,7 @@ function renderJugadores(cont, ids) {
         `<div id="tabla-jugadores-contenido"></div>`, { id: "seccion-tabla-jugadores" })}
       ${panel("Gráficos", "Ranking de los jugadores más determinantes, por goles y asistencias.",
         `<div id="graficos-jugadores-contenido"></div>`, { id: "seccion-graficos-jugadores" })}
+      ${renderDatosCuriosos(ids, "jugador")}
       ${panel("Dúos asistidor → goleador", "Qué combinaciones de pase y definición se repitieron más.",
         `<div id="duos-contenido"></div>`, { id: "seccion-duos" })}
       ${panel("Comparar jugadores", "Elegí 2 jugadores para ver sus estadísticas lado a lado. Buitres no arma equipos internos, así que esto compara números, no enfrentamientos directos.",
@@ -1454,6 +1533,9 @@ function renderJugadores(cont, ids) {
     </div>
   `;
   activarScrollASecciones(cont);
+  for (const boton of cont.querySelectorAll("#seccion-curiosos-jugadores [data-jugador-id]")) {
+    boton.addEventListener("click", () => irAFichaJugador(boton.dataset.jugadorId));
+  }
   renderTablaJugadoresContenido(cont.querySelector("#tabla-jugadores-contenido"), ids);
   renderGraficoJugadoresContenido(cont.querySelector("#graficos-jugadores-contenido"), ids);
   renderDuosContenido(cont.querySelector("#duos-contenido"), ids);
