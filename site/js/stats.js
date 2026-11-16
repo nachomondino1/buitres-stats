@@ -770,6 +770,104 @@ export function datosCuriosos(data, idsPartidos) {
   };
 }
 
+/** Curiosidades de jugadores (vista Jugadores → Datos curiosos). Cada una es
+ * null si no aplica; los mínimos evitan que salga "récord" con 1 solo dato.
+ * Empate: gana el de nombre_mostrar alfabéticamente primero (determinístico).
+ * Los que dependen de promedio exigen jugar al menos la mitad de los
+ * partidos del set (mismo criterio que jugadorAmuleto). */
+export function datosCuriososJugadores(data, idsPartidos) {
+  const partidos = data.partidos.filter((p) => idsPartidos.has(p.id_partido));
+  const partidoPorId = new Map(partidos.map((p) => [p.id_partido, p]));
+  const nombrePorId = new Map(data.jugadores.map((j) => [j.id_jugador, j.nombre_mostrar]));
+  const nombre = (id) => nombrePorId.get(id) ?? id;
+  const golesGF = data.goles.filter((g) => idsPartidos.has(g.id_partido) && g.tipo_gol === "GF");
+
+  // el mayor `valor` entre `candidatos` ({idJugador, valor, ...}), con `minimo`
+  const mejor = (candidatos, minimo) => {
+    let m = null;
+    for (const c of candidatos) {
+      if (c.valor < minimo) continue;
+      if (!m || c.valor > m.valor || (c.valor === m.valor && nombre(c.idJugador).localeCompare(nombre(m.idJugador)) < 0)) m = c;
+    }
+    return m && { ...m, nombre: nombre(m.idJugador) };
+  };
+
+  // cuántas veces aparece `idJugador` en `campo` ("id_goleador"/"id_asistidor") por partido
+  const porPartido = (campo) => {
+    const conteo = new Map();
+    for (const gol of golesGF) {
+      if (!gol[campo]) continue;
+      const clave = `${gol.id_partido}|${gol[campo]}`;
+      conteo.set(clave, (conteo.get(clave) ?? 0) + 1);
+    }
+    return [...conteo].map(([clave, valor]) => {
+      const [idPartido, idJugador] = clave.split("|");
+      const partido = partidoPorId.get(Number(idPartido));
+      return { idJugador, valor, fecha: partido.fecha, rival: partido.rival };
+    });
+  };
+
+  const tabla = tablaJugadores(data, idsPartidos);
+  // partidos jugados sin amarilla ni roja: no hay "con tarjeta" por partido en
+  // la tabla (solo totales), así que se cuenta directo de las alineaciones
+  const sinTarjeta = new Map();
+  for (const al of data.alineaciones) {
+    if (idsPartidos.has(al.id_partido) && !al.amarillas && !al.rojas) sinTarjeta.set(al.id_jugador, (sinTarjeta.get(al.id_jugador) ?? 0) + 1);
+  }
+  const tablaTarjeta = (f) => sinTarjeta.get(f.id_jugador) ?? 0;
+  // "el más generoso": a cuántos compañeros distintos les dio al menos una asistencia
+  const asistioA = new Map();
+  // "gol a todos": a cuántos rivales distintos les hizo al menos un gol
+  const golesA = new Map();
+  for (const g of golesGF) {
+    if (g.id_asistidor && g.id_goleador) {
+      if (!asistioA.has(g.id_asistidor)) asistioA.set(g.id_asistidor, new Set());
+      asistioA.get(g.id_asistidor).add(g.id_goleador);
+    }
+    const rival = partidoPorId.get(g.id_partido)?.rival;
+    if (g.id_goleador && rival) {
+      if (!golesA.has(g.id_goleador)) golesA.set(g.id_goleador, new Set());
+      golesA.get(g.id_goleador).add(rival);
+    }
+  }
+  const aLista = (mapa) => [...mapa].map(([idJugador, set]) => ({ idJugador, valor: set.size }));
+
+  // presentismo: partidos del equipo seguidos en los que estuvo en la alineación
+  const ordenados = partidos.slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const jugaron = new Map();
+  for (const al of data.alineaciones) {
+    if (!idsPartidos.has(al.id_partido)) continue;
+    if (!jugaron.has(al.id_jugador)) jugaron.set(al.id_jugador, new Set());
+    jugaron.get(al.id_jugador).add(al.id_partido);
+  }
+  const presentismo = [...jugaron].map(([idJugador, jugados]) => {
+    let actual = 0, maxima = 0;
+    for (const p of ordenados) {
+      actual = jugados.has(p.id_partido) ? actual + 1 : 0;
+      if (actual > maxima) maxima = actual;
+    }
+    return { idJugador, valor: maxima };
+  });
+
+  const rachas = data.jugadores.map((j) => {
+    const r = rachaGoleadoraJugador(data, idsPartidos, j.id_jugador).mejor;
+    return r && { idJugador: j.id_jugador, valor: r.cantidad, desde: r.desde, hasta: r.hasta };
+  }).filter(Boolean);
+
+  return {
+    masAsistenciasUnPartido: mejor(porPartido("id_asistidor"), 2),
+    rachaGoleadora: mejor(rachas, 2),
+    presentismo: mejor(presentismo, 3),
+    masGenerosoAsistiendo: mejor(aLista(asistioA), 2),
+    golALosRivales: mejor(aLista(golesA), 3),
+    fairPlay: mejor(
+      tabla.filter((f) => f.pj >= 5).map((f) => ({ idJugador: f.id_jugador, valor: tablaTarjeta(f), pj: f.pj })),
+      5,
+    ),
+    masAmarillas: mejor(tabla.map((f) => ({ idJugador: f.id_jugador, valor: f.ta })), 2),
+  };
+}
+
 // ---------------- logros, rankings y comparador (vista Jugadores) ----------------
 // Pensado para los dos ejes que pidió la usuaria: que un jugador se sienta
 // "pro" (ficha con logros/badges) y que haya competencia sana entre amigos

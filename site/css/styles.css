@@ -174,11 +174,19 @@ header.app-header {
    contenedor a los hijos position:fixed, y en mobile el nav.tabs (dentro del
    header) va fijo al viewport. */
 @media (min-width: 601px) {
-  header.app-header {
+  /* un solo blur para todo el bloque (título + pestañas + filtros): si solo
+     lo tiene una parte, el resto queda opaco y se ve cortado. Los hijos van
+     transparentes para que se vea el mismo fondo. */
+  .app-top {
     background: color-mix(in srgb, var(--color-bg-elevado) 85%, transparent);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     box-shadow: var(--sombra-sm);
+  }
+  .app-top header.app-header,
+  .app-top nav.tabs,
+  .app-top .filtros {
+    background: transparent;
   }
 }
 
@@ -1933,13 +1941,55 @@ footer.app-footer p {
 
 /* ---------- portada (Inicio) ---------- */
 
+main.main--inicio {
+  max-width: none;
+  padding: 0;
+}
+
+.inicio-contenido {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--espacio);
+}
+
+.inicio-bloque {
+  margin-bottom: 1.25rem;
+}
+
+.inicio-bloque .panel__cabecera {
+  margin-bottom: 0.75rem;
+}
+
+/* foto a todo el ancho y todo el alto de la pantalla (menos la barra de arriba,
+   que se mide por JS en --alto-app-top). En vertical (celular) la foto se
+   muestra entera sobre una copia borrosa de sí misma, así no se cortan
+   jugadores a los costados. */
 .inicio-hero {
   position: relative;
-  border-radius: var(--radio);
   overflow: hidden;
-  margin-bottom: 1.25rem;
-  aspect-ratio: 4 / 3;
-  background: #0b1a12;
+  height: calc(100vh - var(--alto-app-top, 4rem));
+  height: calc(100svh - var(--alto-app-top, 4rem));
+  min-height: 26rem;
+  background: #0b1a12 url("../media/equipo.jpg") center / cover no-repeat;
+}
+
+@media (max-width: 600px) {
+  .inicio-hero {
+    height: calc(100svh - var(--alto-app-top, 4rem) - 2.9rem);
+  }
+}
+
+@media (orientation: portrait) {
+  .inicio-hero {
+    background-image: none;
+  }
+  .inicio-hero::before {
+    content: "";
+    position: absolute;
+    inset: -2rem;
+    background: url("../media/equipo.jpg") center / cover no-repeat;
+    filter: blur(24px) brightness(0.7);
+  }
 }
 
 .inicio-hero img {
@@ -1948,14 +1998,7 @@ footer.app-footer p {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 40%;
-}
-
-@media (min-width: 700px) {
-  .inicio-hero {
-    aspect-ratio: 16 / 9;
-    max-height: 34rem;
-  }
+  object-position: center 45%;
 }
 
 .inicio-hero::after {
@@ -1974,7 +2017,7 @@ footer.app-footer p {
   align-items: flex-start;
   gap: 1rem;
   height: 100%;
-  padding: 1.25rem;
+  padding: 1.5rem clamp(1.25rem, 5vw, 4rem);
   color: #fff;
 }
 
@@ -2067,10 +2110,10 @@ footer.app-footer p {
   color: var(--color-texto-suave);
 }
 
-.inicio-card__dato {
-  margin-top: auto;
-  padding-top: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-acento);
+
+/* va después de la regla base de la imagen para que gane (misma especificidad) */
+@media (orientation: portrait) {
+  .inicio-hero img {
+    object-fit: contain;
+  }
 }

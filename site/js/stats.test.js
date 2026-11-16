@@ -5,6 +5,7 @@ import {
   UMBRALES_LOGROS,
   compararJugadores,
   datosCuriosos,
+  datosCuriososJugadores,
   duosAsistidorGoleador,
   evolucionGfGc,
   fichaJugador,
@@ -223,6 +224,34 @@ test("datosCuriosos con set vacío: todo null (borde)", () => {
   assert.equal(d.masGolesUnPartido, null);
   assert.equal(d.vallaInvicta, null);
   assert.equal(d.partidoMasDesparejo, null);
+});
+
+test("datosCuriososJugadores sobre todos los partidos", () => {
+  const d = datosCuriososJugadores(DATA, TODOS);
+
+  // asistencias en un partido: Carla asistió 1 vez en P4 (J02 x2 asistidos por J03) -> 2 en P4
+  assert.equal(d.masAsistenciasUnPartido.idJugador, "J03");
+  assert.equal(d.masAsistenciasUnPartido.valor, 2);
+  assert.equal(d.masAsistenciasUnPartido.fecha, "2026-01-31");
+
+  // racha goleadora: Bruno metió en P1 y en P4 pero no jugó otro partido en el medio -> 2 seguidos
+  assert.equal(d.rachaGoleadora.idJugador, "J02");
+  assert.equal(d.rachaGoleadora.valor, 2);
+
+  // presentismo: Ana jugó P1, P2 y P3 seguidos (3), mínimo 3
+  assert.equal(d.presentismo.idJugador, "J01");
+  assert.equal(d.presentismo.valor, 3);
+
+  // generoso: Carla asistió a Bruno (x2) = 1 compañero distinto; bajo el mínimo de 2
+  assert.equal(d.masGenerosoAsistiendo, null);
+  assert.equal(d.golALosRivales, null); // nadie le hizo gol a 3 rivales distintos
+  assert.equal(d.fairPlay, null); // nadie jugó 5 partidos
+  assert.equal(d.masAmarillas, null); // 1 amarilla de Bruno, bajo el mínimo
+});
+
+test("datosCuriososJugadores con set vacío: todo null (borde)", () => {
+  const d = datosCuriososJugadores(DATA, new Set());
+  for (const valor of Object.values(d)) assert.equal(valor, null);
 });
 
 // ---------------- rachasHistoricas ----------------
