@@ -10,6 +10,9 @@ python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
+## Comandos
+
+
 ## Fase 1 — generar Buitres_v3.xlsx
 
 1. `python scripts/build_v3.py` — (re)genera `scripts/propuesta_jugadores.csv` separando
@@ -44,9 +47,6 @@ Y abrir `http://localhost:8008`. No sirve abrir `site/index.html` directo con do
 servidor. Los filtros quedan en la URL (`?tipo=Torneo&competencia=Apertura+2026&ultimos=5`), así que un link
 específico se puede compartir tal cual.
 
-## Torneos (tabla de posiciones de la liga)
-
-La vista Partidos muestra la tabla de cada torneo (Apertura 2026, Clausura 2026...).
 ## Flujo semanal
 
 Después de cada partido:
@@ -69,6 +69,9 @@ Para tener en cuenta:
 - Si la fecha del próximo partido ya pasó y todavía no se corrió el sync, el panel
   "Próximo partido" se esconde solo (no muestra un rival viejo).
 
+## Torneos (tabla de posiciones de la liga)
+
+La vista Partidos muestra la tabla de cada torneo (Apertura 2026, Clausura 2026...).
 Esas tablas son una "foto" guardada en `torneos/<id_torneo>.json` (versionada, así el
 historial queda aunque la liga lo saque de su sitio). Se generan con la API que usa la
 página de posiciones de North Champ:
